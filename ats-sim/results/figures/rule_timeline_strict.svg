@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420" role="img" aria-label="ATS rule trigger timeline strict">
+<style>
+text{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.title{font-size:18px;font-weight:700;fill:#0b0b0b}
+.subtitle{font-size:12px;fill:#52514e}
+.axis{font-size:11px;fill:#898781}
+.label{font-size:11px;fill:#0b0b0b}
+.legend{font-size:12px;fill:#52514e}
+.note{font-size:11px;fill:#898781}
+</style>
+<rect width="100%" height="100%" fill="#fcfcfb" rx="14"/>
+<text class="title" x="40" y="38">Rule trigger timeline — strict</text>
+<text class="subtitle" x="40" y="60">Rule-Based adjustments; each marker is one online CIR/CBS action</text>
+<text class="axis" x="124" y="109" text-anchor="end">R2_DELAY_WARN</text>
+<line x1="136" y1="105" x2="946" y2="105" stroke="#e1e0d9"/>
+<text class="axis" x="124" y="151" text-anchor="end">R3_BURST</text>
+<line x1="136" y1="147" x2="946" y2="147" stroke="#e1e0d9"/>
+<text class="axis" x="124" y="193" text-anchor="end">R4_RESOURCE_EXCESS</text>
+<line x1="136" y1="189" x2="946" y2="189" stroke="#e1e0d9"/>
+<text class="axis" x="124" y="235" text-anchor="end">R5_DROP</text>
+<line x1="136" y1="231" x2="946" y2="231" stroke="#e1e0d9"/>
+<text class="axis" x="124" y="277" text-anchor="end">R6_RETURN</text>
+<line x1="136" y1="273" x2="946" y2="273" stroke="#e1e0d9"/>
+<text class="axis" x="136.0" y="390" text-anchor="middle">0.0s</text>
+<text class="axis" x="338.5" y="390" text-anchor="middle">0.5s</text>
+<text class="axis" x="541.0" y="390" text-anchor="middle">1.0s</text>
+<text class="axis" x="743.5" y="390" text-anchor="middle">1.5s</text>
+<text class="axis" x="946.0" y="390" text-anchor="middle">2.0s</text>
+<circle cx="140.1" cy="147.0" r="6" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>R3_BURST at t=0.010s · CIR 8.0→8.0 Mbps · CBS 20.0→40.0 Kbit</title></circle>
+<circle cx="162.4" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.065s · CIR 8.0→12.0 Mbps · CBS 40.0→60.0 Kbit</title></circle>
+<circle cx="182.7" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.115s · CIR 12.0→16.0 Mbps · CBS 60.0→80.0 Kbit</title></circle>
+<circle cx="203.0" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.165s · CIR 16.0→20.0 Mbps · CBS 80.0→100.0 Kbit</title></circle>
+<circle cx="223.3" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.215s · CIR 20.0→24.0 Mbps · CBS 100.0→100.0 Kbit</title></circle>
+<circle cx="265.9" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=0.320s · CIR 24.0→20.8 Mbps · CBS 100.0→84.0 Kbit</title></circle>
+<circle cx="286.2" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=0.370s · CIR 20.8→18.2 Mbps · CBS 84.0→71.2 Kbit</title></circle>
+<circle cx="306.5" cy="189.0" r="6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>R4_RESOURCE_EXCESS at t=0.420s · CIR 18.2→17.2 Mbps · CBS 71.2→71.2 Kbit</title></circle>
+<circle cx="341.0" cy="147.0" r="6" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>R3_BURST at t=0.505s · CIR 17.2→17.2 Mbps · CBS 71.2→91.2 Kbit</title></circle>
+<circle cx="361.3" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.555s · CIR 17.2→21.2 Mbps · CBS 91.2→111.2 Kbit</title></circle>
+<circle cx="381.6" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.605s · CIR 21.2→25.2 Mbps · CBS 111.2→131.2 Kbit</title></circle>
+<circle cx="401.9" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.655s · CIR 25.2→29.2 Mbps · CBS 131.2→151.2 Kbit</title></circle>
+<circle cx="422.2" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.705s · CIR 29.2→33.2 Mbps · CBS 151.2→171.2 Kbit</title></circle>
+<circle cx="442.5" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.755s · CIR 33.2→37.2 Mbps · CBS 171.2→191.2 Kbit</title></circle>
+<circle cx="462.8" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.805s · CIR 37.2→41.2 Mbps · CBS 191.2→211.2 Kbit</title></circle>
+<circle cx="483.1" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.855s · CIR 41.2→45.2 Mbps · CBS 211.2→231.2 Kbit</title></circle>
+<circle cx="503.4" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.905s · CIR 45.2→49.2 Mbps · CBS 231.2→251.2 Kbit</title></circle>
+<circle cx="523.7" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=0.955s · CIR 49.2→53.2 Mbps · CBS 251.2→251.2 Kbit</title></circle>
+<circle cx="568.4" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.065s · CIR 53.2→45.2 Mbps · CBS 251.2→205.0 Kbit</title></circle>
+<circle cx="590.7" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.120s · CIR 45.2→37.8 Mbps · CBS 205.0→168.0 Kbit</title></circle>
+<circle cx="613.1" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.175s · CIR 37.8→31.8 Mbps · CBS 168.0→138.4 Kbit</title></circle>
+<circle cx="635.4" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.230s · CIR 31.8→27.1 Mbps · CBS 138.4→114.7 Kbit</title></circle>
+<circle cx="657.7" cy="147.0" r="6" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>R3_BURST at t=1.285s · CIR 27.1→27.1 Mbps · CBS 114.7→134.7 Kbit</title></circle>
+<circle cx="680.1" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=1.340s · CIR 27.1→31.1 Mbps · CBS 134.7→154.7 Kbit</title></circle>
+<circle cx="702.4" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=1.395s · CIR 31.1→35.1 Mbps · CBS 154.7→174.7 Kbit</title></circle>
+<circle cx="724.7" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=1.450s · CIR 35.1→39.1 Mbps · CBS 174.7→194.7 Kbit</title></circle>
+<circle cx="747.1" cy="105.0" r="6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>R2_DELAY_WARN at t=1.505s · CIR 39.1→43.1 Mbps · CBS 194.7→194.7 Kbit</title></circle>
+<circle cx="791.7" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.615s · CIR 43.1→36.1 Mbps · CBS 194.7→159.8 Kbit</title></circle>
+<circle cx="814.0" cy="273.0" r="6" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"><title>R6_RETURN at t=1.670s · CIR 36.1→30.4 Mbps · CBS 159.8→131.8 Kbit</title></circle>
+<circle cx="836.4" cy="189.0" r="6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>R4_RESOURCE_EXCESS at t=1.725s · CIR 30.4→29.4 Mbps · CBS 131.8→131.8 Kbit</title></circle>
+<circle cx="872.9" cy="189.0" r="6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>R4_RESOURCE_EXCESS at t=1.815s · CIR 29.4→28.4 Mbps · CBS 131.8→131.8 Kbit</title></circle>
+<circle cx="909.5" cy="189.0" r="6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>R4_RESOURCE_EXCESS at t=1.905s · CIR 28.4→27.4 Mbps · CBS 131.8→131.8 Kbit</title></circle>
+<circle cx="946.0" cy="189.0" r="6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>R4_RESOURCE_EXCESS at t=1.995s · CIR 27.4→26.4 Mbps · CBS 131.8→131.8 Kbit</title></circle>
+<text class="note" x="40" y="390">Counts: R3_BURST: 3 · R2_DELAY_WARN: 17 · R6_RETURN: 8 · R4_RESOURCE_EXCESS: 5 · preliminary PoC.</text>
+</svg>

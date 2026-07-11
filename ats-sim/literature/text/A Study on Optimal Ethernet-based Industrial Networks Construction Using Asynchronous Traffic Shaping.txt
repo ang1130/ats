@@ -1,0 +1,301 @@
+
+
+===== PAGE 1 =====
+A Study on Optimal Ethernet-based
+Industrial Networks Construction Using
+Asynchronous Trafﬁc Shaping in IEEE 802.1TSN
+and Downhill Simplex Method
+Akari Y oshimura and Y oshihiro Ito
+Graduate School of Engineering Nagoya Institute of Technology
+Nagoya, 466-8555, Japan
+Email: {yosimura@en., yoshi@ }nitech.ac.jp
+Abstract—This paper studies using Asynchronous Trafﬁc
+Shaping (ATS), which is deﬁned by IEEE 802.1TSN (Time-
+Sensitive Networking), to transmit time-sensitive trafﬁc over
+Ethernet-based industrial networks. In addition, the authors use
+the Downhill simplex method, a numerical optimization method,
+to calculate optimal ATS parameter values to meet industrial
+network requirements. The paper applies the method to an actual
+industrial network by experiment and conﬁrms its effectiveness
+from the experimental results.
+I. I NTRODUCTION
+As we move toward Industry 5.0, more diverse and large
+amounts of data will be required on factory networks to
+realize collaboration between humans and robots. Therefore,
+the adoption of high-speed Ethernet-based networks is under-
+way to transmit the above data. Moreover, since the above
+human-robot collaboration requires low latency and highly
+reliable data transmission, Quality of Service (QoS) control
+over Ethernet is inevitable.
+To realize such QoS control, different organizations de-
+ﬁne various Ethernet-based industrial networks. This makes
+the development of interconnections among factory networks
+difﬁcult. Consequently, it is currently considering the adoption
+of IEEE 802.1TSN (Time-Sensitive Networking) standards as
+a common QoS control for industrial networks. A project,
+IEC/IEEE P60802[1], is especially standardizing a proﬁle of
+IEEE 802.1TSN standards for industrial networks. However,
+even if the industrial proﬁle has been standardized, the proﬁle
+alone cannot provide a network that meets the requirements of
+individual networks. That is, it is necessary to conﬁgure the
+network and set appropriate parameters for the IEEE 802.1TSN
+standard. However, this can be challenging in industrial net-
+works with various network devices and their requirements.
+To solve the problem mentioned above, [2] targets Time-
+Aware Shaper (TAS) as the QoS control in IEEE 802.1TSN
+and proposes a method to ﬁnd appropriate parameters that
+satisfy the requirements of an industrial network by numerical
+optimization method; it conﬁrms the effectiveness by experi-
+ment. However, since TAS requires time synchronization and
+complicated implementation, adopting and stabilizing it in
+large-scale industrial networks can be costly. Therefore, it is
+necessary to consider QoS control other than TAS.
+Thus, this study will target Asynchronous Trafﬁc Shaping
+(A TS) in IEEE 802.1TSN instead of TAS. Although A TS
+cannot provide as precise control as TAS, it only requires time
+synchronization between devices and complex implementation.
+On the other hand, Credit-Based Shaper (CBS) is deﬁned in
+IEEE 802.1TSN as a technology similar to A TS. However,
+CBS has only one control parameter and cannot be precisely
+controlled, while A TS allows for more accurate control than
+CBS.
+In this way, A TS can be expected to be effective in
+industrial networks, but it has never been clear whether A TS
+can meet the requirements of industrial networks. Thus, this
+paper tackles adopting A TS to an industrial network and ﬁnds
+optimal parameters using the numerical optimization method
+similar to [2]; it evaluates the effectiveness of applying A TS
+to industrial networks and also clariﬁes whether an optimal
+parameter can be obtained by experiment.
+The rest of this paper is organized as follows: Sections
+II and III introduce an overview of TSN and a numerical
+optimization method, respectively. The experiments and their
+results are presented in Sects. IV and V, respectively. Finally,
+Sect. VI concludes this paper.
+II. IEEE 802.1TSN
+A. Outline
+IEEE 802.1TSN is a set of standards developed to ad-
+dress real-time communication requirements over IEEE 802
+networks and standardized by the 802.1 Working Group of
+the IEEE 802 Committee. IEEE 802.1TSN standards provide
+various technologies for transferring data over IEEE 802
+networks with low latency and high reliability. Moreover,
+the IEC/IEEE P60802 project mentioned above, the IEEE
+P802.1DP[3] project, which deﬁnes a proﬁle for in-aircraft
+networks, and the IEEE P802.1DG[4] project, which develops
+a proﬁle for in-vehicle networks, and other IEEE 802.1TSN
+standard some projects are considering proﬁles.
+Among the IEEE 802.1TSN standards, IEEE 802.1Q[5]
+speciﬁes the deﬁnition and implementation of Virtual LANs
+(VLANs); it also deﬁnes time synchronization, network man-
+agement, QoS control, etc. A TS is deﬁned as one of the QoS
+688
+979-8-3315-0694-0/25/$31.00 ©2025 IEEE ICOIN 2025
+2025 International Conference on Information Networking (ICOIN) | 979-8-3315-0694-0/25/$31.00 ©2025 IEEE | DOI: 10.1109/ICOIN63865.2025.10992702
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 07:59:13 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 2 =====
+controls of IEEE 802.1Q. The following is a description of the
+A TS discussed in this paper.
+B. Asynchronous Trafﬁc Shaping
+A TS aims to efﬁciently schedule the transmission of data
+packets in a network and use the bandwidth effectively while
+minimizing delay. Figure 1 displays an outline of A TS. In Fig.
+1, each switch has an independent clock and transmits frames
+based on a shaper implementing the A TS algorithm attached to
+the queue. The shaper equalizes the trafﬁc by delaying excess
+trafﬁc and holding frames in the queue when trafﬁc exceeds a
+speciﬁed amount.
+Fig. 1: Asynchronous Trafﬁc Shaping
+The A TS’s scheduler uses the Token Bucket Emulation
+(TBE) method. Figure 2 indicates the behavior of TBE. As
+shown in Fig. 2, transmission rights called tokens are contin-
+uously emitted at a speciﬁc rate into a buffer called a token
+bucket. The capacity of the token bucket is limited. When a
+frame is transmitted, several tokens equal to the frame size
+are removed from the token bucket. When frames come in at
+a rate exceeding the average rate of tokens, transmission is
+either held back until more tokens accumulate, discarded, or
+sent with a lower priority.
+A TS has three parameters: Max Residence Time (MRT),
+Committed Information Rate (CIR), and Committed Burst Size
+(CBS). MRT is the maximum time a switch can stay on. CIR
+and CBS are the token input rate and the number of tokens that
+can be deleted at one time, respectively. Consequently, frame
+delay can be limited in A TS without time synchronization
+between devices. As mentioned above, since A TS does not
+rely on time synchronization, it is expected to reduce imple-
+mentation costs.
+III. N UMERICAL OPTIMIZA TION METHODS
+A. Outline
+Numerical optimization methods are mathematical tech-
+niques for solving problems numerically to ﬁnd the optimal
+solution. An optimization problem is formulated as the prob-
+lem of ﬁnding the maximum or minimum value of a function
+under given conditions. Numerical optimization is widely used
+to ﬁnd approximate solutions using algorithms, especially in
+complex problems for which no analytical solution is available.
+There are various numerical optimization methods, and the
+Fig. 2: T oken Bucket Emulation
+method to be employed should be selected according to the
+characteristics of the problem to be optimized. This study
+adopts the Downhill simplex method since it is easy to
+implement and has the potential to converge with a small
+number of function evaluations for nonlinear problems in high-
+dimensional spaces. The following subsection introduces an
+overview of the Downhill simplex method.
+B. Downhill Simplex Method
+The Downhill simplex method [6] can search for optimal
+solutions without using derivatives like the gradient method. It
+is, therefore, suitable for problems where the function could be
+more complex or smoother in shape. Its search is performed
+with a polyhedron (simplex), such as a triangle when the
+variable to be optimized is 2-dimensional and a tetrahedron
+when it is 3-dimensional. This simplex process is based on
+evaluating the objective function, gradually changing its shape
+as it approaches the optimal solution. Simplex deformation
+uses reﬂection, expansion, and contraction operations on the
+worst points to obtain new search points and gradually ap-
+proach the optimal solution. Its derivative-free feature makes it
+a valuable algorithm for many real-world problems. However,
+since it tends to fall into local solutions and its efﬁciency
+decreases for high-dimensional problems, it is important to
+set appropriate initial conditions and, in some cases, to use it
+in combination with other methods.
+I V. E XPERIMENTS
+A. Outline
+In this experiment, A TS is applied to an Ethernet-based
+industrial network whose parameters are conﬁgured using
+parameters obtained by numerical optimization. Then, it is
+evaluated whether the requirements can be met by simulation.
+This experiment uses the Downhill simplex method as a
+689
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 07:59:13 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 3 =====
+numerical optimization method to ﬁnd the optimal parameters
+of the A TS.
+B. Experimental Environment
+Fig. 3: Experimental Network
+Our experimental network is shown in Fig. 3. This experi-
+ment uses the same experimental network as in [2] to evaluate
+the effectiveness of the A TS in the same environment. Assum-
+ing a simple actual factory network, the network consists of
+six devices (HA0, HA1, HA2, HB0, HB1, HB2) that send and
+receive data, nine devices (SA0, SA1, SA2, SB0 through SB5)
+that only send data, one device (RD), and six switches (SW0
+through SW5) that only receive data. The lines between devices
+and switches and between switches are 100BASE-TX. Three
+devices (HA0, HA1, HA2) send three types of trafﬁc received
+by the corresponding devices (HB0, HB1, HB2). HB0, HB1,
+and HB2, and SA0, SA1, and SA2 also send three trafﬁc to
+the corresponding devices (HA0, HA1, HA2). HB0, HB1, and
+HB2 also send trafﬁc to RD.
+A TS is applied to each port of the switch. Table I shows
+the speciﬁcations and requirements for the trafﬁc sent by
+each device. In Table I, NA means that no requirements are
+speciﬁed. The total number of trafﬁc is 33, of which the
+number of trafﬁc with requirements is 27. The experiment
+is conducted in simulation. Each trafﬁc is assigned a trafﬁc
+number from 1 to 33 for convenience.
+In this experiment, the initial parameter values of the
+Downhill simplex method are selected randomly. However,
+depending on the initial value, locally appropriate values
+may be chosen as the optimal ones, so the initial value is
+changed, and the evaluation is repeated. The simulators used
+are OMNeT++6.0.1[7] and INET4.5[8].
+TABLE I: Speciﬁcation of Experimental Trafﬁc
+Device Send Interval (µs) Size (byte) Priotiry Requirement(µs)
+HA0, HA1, HA2 500 150 7 350
+HB0, HB1, HB2 500 150 7 350
+SA0, SA1, SA2 1000 750 6 600
+SB0, SB1,
+SB2, SB3, 280∼520 500 5 NA
+SB4, SB5
+C. Criterion
+It is necessary to deﬁne the evaluation values of the
+parameters derived from the requirements and results to apply
+the numerical optimization method to ﬁnd the optimal A TS
+parameters. In this paper, a criterion f to be used in the
+A TS parameter search is deﬁned as follows. First, we deﬁne
+the required delay Dr (k) that the trafﬁc must satisfy and
+the maximum delay Dm(k) that has been measured. Here,
+k(1 ≤ k ≤ N ) in these variables represents trafﬁc, N is the
+total number of trafﬁc, and Nm is the number of trafﬁc that
+satisﬁes the requirement. The criterion is obtained from Eq.
+(1). The criteria has a zero value if the delay requirement
+is met, and if not, the larger the difference from the delay
+requirement, the larger the value. This experiment terminates
+the search for appropriate parameter values at the 100th trial,
+regardless of whether the requirements are met.
+f =
+N∑
+k=1
+sgn(Dr (k)−Dm(k))(Dr (k)−Dm(k)/Dr (k))2 (1)
+V. R ESULTS
+Figure 4 shows the trends of the criterion in all the three
+experiments. In Fig. 4, the abscissa and ordinate mean the
+number of trials and the criterion, respectively. From Fig. 4,
+we see that one of the criterion values converges to 0. However,
+the other two criterion values converged at 0.3137 and 0.5605,
+respectively, and did not become smaller than those values.
+Fig. 4: Criterion vs. Trials
+Figures 5 through 7 plot the measured maximum delays
+for all trafﬁc. In these ﬁgures, the abscissa indicates the trafﬁc
+number, and the ordinate indicates the measured maximum
+delay value. From Figs. 5 through 7, we see the following.
+From Figs. 5, we see that one of the trafﬁc with priority 7 did
+not meet the requirement. Figure 6 indicates that two trafﬁc
+with priority 6 did not satisfy the requirement. This is because
+690
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 07:59:13 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 4 =====
+the initial parameters were generated randomly and fell into
+the locally appropriate value due to the characteristics of the
+Downhill simplex method. On the other hand, from Fig. 7, all
+trafﬁc satisﬁes the requirement. Therefore, when ﬁnding the
+optimal value using this proposal, we found that appropriate
+initial values for the Downhill simplex method are necessary.
+Thus, our future work will involve searching for this initial
+value.
+Fig. 5: Maximum delay for the ﬁrst experiment
+Fig. 6: Maximum delay for the second experiment
+Fig. 7: Maximum delay for the third experiment
+VI. C ONCLUSIONS
+We studied the optimal Ehternet-based industrial network
+conﬁguration with A TS using the Downhill simplex method,
+a numerical optimization method. We conﬁrmed the effective-
+ness of the method by experiment. However, we found that
+depending on the initial values of the simplex method, the
+optimal solution may not be found, and it is necessary to
+consider appropriate initial values.
+Our future issues are as follows: First, we will consider how
+to search for the initial value of the Downhill simplex method.
+Second, we will evaluate the method using other industrial
+networks.
+REFERENCES
+[1] “IEC/IEEE 60802,”. https://1.ieee802.org/tsn/iec-ieee-60802/
+[2] A. Y oshimura and Y . Ito, “A Study on Determination of an Appropriate
+GCL of Time-Aware Shaper in Ethernet-Based Industrial Networks,”
+Proc. 2024 Fifteenth International Conference on Ubiquitous and Future
+Networks (ICUFN), Budapest, Hungary, pp.355-359, 2024.
+[3] “IEEE P802.1DP Time-Sensitive Networking for
+Aerospace Onboard Ethernet Communications,”
+https://standards.ieee.org/ieee/802.1DP/10465/
+[4] “IEEE P802.1DG IEEE Draft Standard for Time-Sensitive Network-
+ing Proﬁle for Automotive In-V ehicle Ethernet Communications,
+”https://standards.ieee.org/ieee/802.1DG/7480/
+[5] “IEEE 802.1Q IEEE Standard for Local and Metropoli-
+tan Area Networks-Bridges and Bridged Networks,”
+https://standards.ieee.org/ieee/802.1Q/6844/
+[6] N. A. John and R. Mead, “A simplex method for func-
+tion minimization,” Computer Journal, V ol. 7, pp. 308-313, 1965
+doi:10.1093/comjnl/7.4.308.
+[7] “OMNeT++ Discrete Event Simulator,”https://omnetpp.org
+[8] “INET Framework,”https://inet.omnetpp.org
+691
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 07:59:13 UTC from IEEE Xplore.  Restrictions apply. 

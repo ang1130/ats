@@ -1,0 +1,556 @@
+
+
+===== PAGE 1 =====
+The Improvement of Scheduling Algorithm Based on Token Bucket and Weighted 
+Fair Queue 
+Zaiqun Wu1 
+1College of Information Engineering, Baise University, 
+Guangxi, Baise, 533000 
+Huanchang Qin1* 
+1College of Information Engineering, Baise University, 
+Guangxi, Baise, 533000 
+e-mail: qin8638@163.com 
+Xiaomei Song1 
+1College of Information Engineering, Baise University, 
+Guangxi, Baise, 533000 
+Guangyan Fu2 
+2College of Chemistry & Environment Engineering, Baise 
+University, Guangxi, Baise, 533000 
+Jiangfeng Li1 
+1College of Information Engineering, Baise University, Guangxi, Baise, 533000 
+ 
+ 
+Abstract—With the surge of traffic and types carried by the 
+network, the possibility of congestion in the network is 
+increasing. However, the traditional queue scheduling 
+algorithm has been unable to meet the network quality of 
+service (QoS). Aiming at this situation, based on the analysis 
+of token bucket algorithm and various queue scheduling 
+algorithms, an improved token bucket and weighted fair 
+queue (WFQ) scheduling algorithm is proposed. Simulation 
+experiments show that the algorithm can effectively carry out 
+flow control and flow shaping. At the same time, by adjusting 
+the weight of the queue length, it will guarantee the network 
+quality of service of the real-time data flow and improve the 
+performance of network delay, jitter and data packet loss rate. 
+Keywords—token bucket; weighted fair queue; quality of 
+service; time delay; improved algorithm 
+I. INTRODUCTION  
+With the popularity of the Internet and the fast 
+development of network technology, the network has 
+penetrated into all aspects of people's work and life, 
+becoming an indispensable part of people's work and life. 
+The 50th Statistical Report [1] on China's Internet 
+Development released by China Internet Network 
+Information Center shows that as of June 2022, the netizens 
+in China has reached 1.051 billion, and the Internet 
+penetration rate has reached 74.4%. At the same time, in the 
+first half of 2022 alone, China 's mobile Internet access 
+traffic has reached 124.1 billion GB, with a 20.2 % year-
+on-year growth. Especially since the outbreak of the global 
+novel coronavirus pneumonia in 2020, real-time data flows 
+such as video conferencing, online teaching, and home 
+office have flourished. Network congestion, even network 
+paralysis, has seriously affected the network quality of 
+services. However, the most direct and effective way to 
+improve the quality of network services is to increase the 
+bandwidth of network links. But, network bandwidth 
+resources are limited. Therefore, researchers solve the 
+problem of network quality of service by combining token 
+bucket technology and queue scheduling technology. In 
+Reference [2], a WFQ scheduling algorithm based on 
+service classification and bandwidth allocation was 
+designed, which not only maintains the fairness of WFQ 
+algorithm but also meets the requirements of the quality of 
+service for real-time services. A weighted fair queue 
+scheduling algorithm with weight adjustment was proposed 
+in literature [3][4][5][6]. The delay and packet loss rate of 
+important services are reduced, and the QoS of real-time 
+services is improved. Reference [7] implements a quality of 
+service-oriented SDN global multi-channel runoff 
+scheduling algorithm, which alleviated the problems of 
+network congestion and large delay. Literature [8] reduced 
+the bandwidth fragmentation and guaranteed the quality of 
+service of small flows by optimizing the First Meet the 
+Bandwidth Algorithm (FMBA), and improved the network 
+throughput by establishing the weight function. By 
+dynamically assigning weights and adjusting the service 
+order of the queue, the literature [9] reduced the delay and 
+packet loss, and met the quality of service requirements of 
+different types of data in different self-similarity degrees. In 
+literature [10][11], the PQ + WFQ scheduling mechanism 
+is applied to the IP service network, which not only 
+guarantees the quality of service of real-time services, but 
+also avoids the phenomenon of " starvation " of low-latency 
+services. 
+In order to improve the QoS, an improved scheduling 
+algorithm based on token bucket and WFQ is proposed on 
+the basis of summarizing and analyzing the existing 
+literature. In this algorithm, token buckets is used for flow 
+control and traffic shaping. At the same time, by adjusting 
+the weight of queue length, the network service quality of 
+real-time services is guaranteed, and the network delay, 
+jitter and data packet loss rate are improved. 
+ 
+66
+2023 12th International Conference of Information and Communication Technology (ICTech)
+979-8-3503-3291-9/23/$31.00 ©2023 IEEE
+DOI 10.1109/ICTech58362.2023.00024
+2023 12th International Conference of Information and Communication Technology (ICTech) | 979-8-3503-3291-9/23/$31.00 ©2023 IEEE | DOI: 10.1109/ICTECH58362.2023.00024
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 2 =====
+II. THE PRINCIPLE OF WFQ ALGORITHM 
+The WFQ model [12][13] is an approximation 
+algorithm of the Generalized Processor Sharing ( GPS ) 
+model, which records the time of each data packet from the 
+start of entering the queue to the next node ( called virtual 
+completion time ), and then the scheduler forwards the data 
+packet based on the minimum virtual completion time. 
+When the data packet enters the queue, the server calculates 
+the virtual completion time of each data packet, then adds 
+the virtual completion time label to the data packet and puts 
+it into the queue. When the scheduler schedules data 
+packets, the server queries whether there are data packets in 
+the queue. If it does not continue to wait for data packets to 
+arrive, it will query and forward the data packets with the 
+minimum virtual completion time, and update the virtual 
+time function. 
+In the WFQ algorithm, it is assumed that there are N 
+queues to be served, and the weight of each queue is wi 
+(i=1,2,3……N). If the service rate of the scheduler is r and 
+the arrival time of the j+1th data packet is tj+1, the service 
+object from tj to tj+1 is determined. Cj represents the set of 
+service objects in this time period. If the virtual time 
+function is defined as V(t), V(t) is set to 0 when the 
+scheduler is idle, and the set time starts from time 0, that is 
+V(0) = 0, then the virtual time at time t
+୨ + ɒ is 
+ V(t୨ + ɒ)=V ( t୨)+
+த
+ిౠ
+  (1) 
+Among them,0 ൑ɒ൑ t୨ାଵ െ t୨, j=1,2,3…… 
+Suppose the link bandwidth is B, P୧
+୩ is the kth arrival 
+data packet of the ith queue, L୧
+୩ is the length of the kth data 
+packet of the ith queue, t୧
+୩ is the arrival time of the kth data 
+packet of the ith queue, r୧ =
+୵౟
+σ ୵౟
+B is the service rate of the 
+queue i, Ts୧
+୩ is the virtual start time of the data packet P୧
+୩, 
+Te୧
+୩
+ is the virtual completion time of the data packet P୧
+୩, 
+then 
+ ቐ
+Ts୧
+୩ =M a x ( T e୧
+୩ିଵ,V ( t୧
+୩
+))
+Te୧
+୩
+=T s୧
+୩ +
+୐౟
+ౡ
+୰౟
+                   (2) 
+According to the Equation of 2, the virtual start time and 
+virtual completion time of each data packet can be 
+calculated. The scheduler forwards the data packet with the 
+smallest virtual completion time, and updates the virtual 
+time function to maintain the set Cj. In the process of 
+maintaining the set Cj, if no data packet arrives after time t, 
+the next data packet arrival time at time t is defined as Tnext 
+(t), and the virtual time needs to be updated. Assuming that 
+the minimum virtual completion time of the data packet at 
+time t is Temin, then according to the Equation of 1, there 
+is 
+ Te
+୫୧୬ =V ( t )+
+୘౤౛౮౪(୲)ି୲
+ిౠ
+  (3) 
+Sorting out Equation 3, we can get that: 
+ T୬ୣ୶୲(t) = t + (Te୫୧୬ െ V(t)) σ wେౠ   (4) 
+The principle of WFQ algorithm is shown in Figure 1. 
+ 
+ 
+Figure 1. The Principle of WFQ Algorithm 
+The WFQ algorithm sets weights for each queue, and its 
+scheduler can schedule each queue fairly so that all queues 
+can be served. This avoids the phenomenon of ' starving ' in 
+non-real-time services. However, because the weight of 
+each queue in the WFQ algorithm cannot be adjusted after 
+being set, if the weight of a queue is large and the number 
+of data packets in the queue is small, it will cause a waste 
+of bandwidth resources. At the same time, if the weight of 
+a queue is small and the number of data packets in the queue 
+is large, congestion is prone to occur, resulting in increased 
+data packet jitter, delay, and data packet loss rate. 
+III. T
+HE IMPROVEMENT OF SCHEDULING ALGORITHM 
+BASED ON TOKEN BUCKET AND WFQ 
+Aiming at the shortcomings of the WFQ algorithm, an 
+improved scheduling algorithm based on token bucket and 
+weighted fair queue is proposed. The algorithm controls the 
+flow and traffic shaping of burst flow and data packet 
+through token bucket. At the same time, the network QoS 
+of real-time services is ensured by adjusting the queue 
+weight strategy. The improved principle based on token 
+bucket and WFQ scheduling algorithm is shown in Figure 
+2. 
+ 
+Figure 2. The Improved Principle Based on Token Bucket and WFQ Scheduling Algorithm 
+j p
+67
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 3 =====
+When the data packet is divided into N queues by the 
+classifier shown in Figure 2, the data packet in the queue is 
+allowed to flow into the token bucket. After filtering by the 
+token bucket, the bursty service or the data packet with too 
+large average rate is smoothly transitioned, and then the 
+processed data packet is input into the queue adjuster. The 
+queue length is adjusted by the queue adjuster, and finally 
+the data packet is forwarded by the scheduler. The 
+algorithm controls the traffic well, solves the problem that 
+some data packets can not get bandwidth resources for a 
+long time or some data packets occupy too much bandwidth 
+resources, and improves the QoS of the whole network. 
+A. The Design of Token Bucket  
+As shown in Figure 2, in order to limit burst traffic, 
+achieve traffic control and shaping, avoid network 
+congestion, and improve network QoS, a token bucket is 
+added to the WFQ algorithm schematic diagram shown in 
+Figure 1. Token bucket [14] is a network model with traffic 
+and rate constraints, which controls data traffic by the 
+number of tokens in the token bucket. The schematic 
+diagram is shown in Figure 3. 
+ 
+Figure 3. The Principle of Token Bucket Algorithm 
+Assuming that the token generation rate is rtoken, that 
+is, rtoken tokens are injected into the bucket per second. If 
+the maximum number of tokens that can be accommodated 
+in the token bucket is P, the working principle of the token 
+bucket [12] [15] [16] is described as follows: 
+The tokens are injected into the bucket at a constant rate 
+rtoken. When the number of tokens in the bucket is P, it 
+indicates that the token bucket is full, and the newly 
+generated token will be discarded. When the data packet 
+arrives, because the forwarding data packet needs to obtain 
+a token, and the number of tokens in the token bucket needs 
+to be greater than the number of data packets before it can 
+be forwarded and transmitted. After the data packet obtains 
+the token from the token bucket, the number of tokens in 
+the bucket will decrease. If the number of tokens in the 
+bucket is insufficient, the data packet will be stored in the 
+buffer. At this time, it is necessary to wait for the increase 
+of the number of tokens in the bucket until there are enough 
+tokens in the bucket to be forwarded and transmitted. If the 
+data packets in the buffer exceed the capacity of the buffer, 
+the new data packets will be discarded.  
+The token bucket algorithm controls the data 
+forwarding transmission rate and smoothes the burst traffic. 
+As long as there are enough tokens in the bucket, a certain 
+degree of data traffic burst can be smoothed. 
+B. The Improved WFQ Scheduling Algorithm 
+Assuming that in N queues, the actual bandwidth 
+obtained by queue i is g
+୧, the total link bandwidth is B, and 
+the theoretical bandwidth obtained by queue i is b୧, then 
+there is: 
+ ൝
+g୧ ൎ b୧                                   B ൒ σ b୧
+୒
+୧ୀଵ
+g୧ ൎ
+ୠ౟
+σ ୠ౟ొ
+౟సభ
+BB < σ b୧
+୒
+୧ୀଵ
+  (5) 
+It can be seen that when the total link bandwidth B<
+σ b୒ , the QoS of real-time services is not high. 
+According to Equation 2 and Equation 5, the larger the 
+weight of the queue, the smaller the virtual completion time 
+and the larger the bandwidth. By adjusting the weight of the 
+queue, the improved WFQ scheduling algorithm enables 
+real-time services to obtain a smaller virtual completion 
+time to ensure that real-time services receive good 
+bandwidth services. For other services, the remaining 
+bandwidth is allocated according to its weight to ensure the 
+fairness of network services. 
+Assuming that the maximum length of the queue is 
+Lmax, the current length of the kth data packet of queue i is 
+L
+୧
+୩, and the theoretical bandwidth obtained by queue i is bi, 
+then the theoretical bandwidth based on queue length 
+adjustment is: 
+ b୧
+ᇱ =
+୐ౣ౗౮
+୐౟
+ౡ b୧  (6) 
+After improvement, the service rates of real-time and 
+non-real-time services are as follows: 
+If the link bandwidth is sufficient, that is, B ൒ σ b୧
+ᇱ ୒
+୧ୀଵ , 
+there is 
+ ቐ
+g୧ ൎ b୧
+ᇱ                                            iאR
+g୧ ൎ
+ୠ౟
+ᇲ
+ୈ౟ିైౣ౗౮
+ా
+B                               iבR  (7) 
+When the link bandwidth is insufficient, that is, B<
+σ b୧
+ᇱ ୒
+୧ୀଵ , there is 
+ ൞
+g୧ ൎ
+ୠ౟
+ᇲ
+ୈ౟ିైౣ౗౮
+ా
+B                               iאR
+g୧ ൎ (B െ σ b୨
+ᇱ
+ୖ )
+ୠ౟
+ᇲ
+σ ୠౡ
+౎
+         iבR
+  (8) 
+Among them, Di represents the maximum delay of data 
+packets, and R represents real-time services. 
+The Equation 7 and Equation 8 show that the improved 
+WFQ scheduling algorithm can not only distinguish real-
+68
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 4 =====
+time services, but also ensure the network service quality of 
+real-time services by adjusting the queue length weight.  
+At the same time, in the case of insufficient link 
+bandwidth, the network service quality of real-time services 
+can also be guaranteed. 
+IV. THE SIMULATION AND THE RESULT ANALYSIS 
+According to the needs of the experiment, the 
+simulation software is used to build the network topology 
+shown in Figure 4. 
+ 
+ 
+Figure 4. The Network Topology Diagram of the Simulation Experiment 
+As shown in Figure 4, real-time video flow, real-time 
+voice flow and non-real-time ordinary business flow are 
+tested by setting the corresponding parameters. Tests show 
+that when the link bandwidth is sufficient, whether the 
+WFQ algorithm or the improved algorithm based on token 
+bucket and WFQ scheduling, the delay of the three service 
+flows in the network is low. However, when the link 
+bandwidth is insufficient, the delay of the three service 
+flows in the WFQ algorithm and the improved algorithm 
+based on token bucket and WFQ scheduling is quite 
+different. The end-to-end delay test data within 10 seconds 
+is shown in Table 1 and Table 2. 
+TABLE I.  THE DELAY TEST DATA OF THREE SERVICE FLOWS IN WFQ ALGORITHM WHEN LINK BANDWIDTH IS INSUFFICIENT 
+s i m u l a t i o n  t i m e / s 0123456789 1 0
+The video data flow/ms 122 127 134 126 131 129 134 127 130 125 126 
+The voice data flow/ms 92 86 95 91 83 97 94 96 88 92 85 
+The normal data flow/ms 105 108 104 99 97 100 105 101 96 98 102 
+TABLE II.  THE DELAY TEST DATA OF THREE SERVICE FLOWS IN THE IMPROVED ALGORITHM WHEN THE LINK BANDWIDTH IS INSUFFICIENT 
+simulation time/s 0 1 2 3 4 5 6 7 8 9 10 
+The video data flow/ms 72 69 68 71 67 68 70 69 69 70 68 
+The voice data flow/ms 67 65 66 68 65 67 68 70 67 69 68 
+The normal data flow/ms 83 113 128 151 156 155 158 157 158 154 157 
+According to the test data in Table 1 and Table 2, the 
+end-to-end delay results of the WFQ algorithm and the 
+improved algorithm when the link bandwidth is insufficient 
+are shown in Figure 5 and Figure 6. 
+ 
+ 
+Figure 5. The End-to-end Delay Diagram of WFQ Algorithm when Link Bandwidth Is Insufficient 
+69
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 5 =====
+ 
+Figure 6. The End-to-end Delay Diagram of The Improved Algorithm When the Link Bandwidth Is Insufficient 
+By comparing Figure 5 and Figure 6, it has shown that 
+under the condition of insufficient link bandwidth, the 
+average delay of video service and voice service after the 
+improved algorithm is less than 70 ms, while the average 
+delay of ordinary service is increased by about 50 ms. It can 
+be seen that the improved algorithm can serve real-time 
+service well, but at the cost of the delay of ordinary service. 
+When there are burst traffic flows in the network, the 
+end-to-end delay test data of three traffic flows in the 
+weighted fair queue algorithm and the improved algorithm 
+based on token bucket and WFQ scheduling are shown in 
+Table 3 and Table 4. The burst time of the video data stream 
+is set at the third second, and the burst time of the voice data 
+stream is set at the fifth second. 
+TABLE III.  THE DELAY TEST DATA OF TWO KINDS OF TRAFFIC FLOWS IN WFQ ALGORITHM WHEN THERE ARE BURST TRAFFIC FLOWS 
+simulation time/s 0 1 2 3 4 5 6 7 8 9 10 
+time delay of video service/ms 127 126 130 183 176 165 138 130 128 126 129 
+time delay of voice service/ms 91 88 92 89 87 146 147 132 114 95 88 
+TABLE IV.  THE DELAY TEST DATA OF TWO TRAFFIC FLOWS IN THE IMPROVED ALGORITHM WHEN THERE ARE BURST TRAFFIC FLOWS 
+simulation time/s 0 1 2 3 4 5 6 7 8 9 10 
+time delay of video service/ms 68 69 70 76 72 69 69 68 68 70 69 
+time delay of voice service/ms 67 68 67 69 68 77 71 70  67 68 67 
+ 
+According to the test data in Table 3 and Table 4, it can 
+be concluded that when there are burst traffic flows in the 
+network, the end-to-end delay results of the three traffic 
+flows based on the weighted fair queue algorithm and the 
+improved algorithm are shown in Figure 7 and Figure 8. 
+ 
+ 
+Figure 7. The End-to-end Delay Graph Based on WFQ Algorithm When There Is Burst Traffic Flow 
+70
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 6 =====
+ 
+Figure 8. The End-to-end Delay Graph Based on the Improved Algorithm When There Is Burst Traffic Flow 
+By analyzing Figure 7 and Figure 8, it can be seen that 
+when sudden traffic flows appear in the network, the time 
+delay of video traffic flow and voice traffic flow is greatly 
+increased by using the weighted fair queuing algorithm, and 
+it takes about 3 seconds to recover to the steady state. But, the 
+improved algorithm controls the flow of the burst flow 
+through the token bucket and the delay change is not obvious. 
+This indicates that the improved algorithm based on token 
+bucket and weighted fair queue scheduling has better network 
+quality of service. 
+Through testing and calculation, in the absence of sudden 
+traffic flow, the algorithm based on token bucket and WFQ 
+scheduling is improved to reduce the average data packet loss 
+rate of each service. The average data packet loss rate of real-
+time video data stream and real-time voice data stream is 
+close to 0.02%, while that of non-real-time traffic stream is 
+close to 0.1%. When there are bursty services, the average 
+data packet loss rate of real-time video data stream and real-
+time voice data stream is close to 0.05%, while the average 
+data packet loss rate of non-real-time services is about 0.15%. 
+It can be seen that, compared with the weighted fair queue 
+algorithm, the improved algorithm based on token bucket and 
+WFQ scheduling distinguishes real-time traffic, and the delay, 
+jitter and data packet loss rate of real-time traffic have been 
+effectively improved, thus improving the QoS of the network. 
+V. C
+ONCLUSION 
+On the basis of the WFQ algorithm, an improved 
+algorithm based on token bucket and WFQ scheduling is 
+proposed. The simulation results show that the introduction 
+of token bucket has a good effect on smoothing the burst 
+traffic, and the improved WFQ algorithm reduces the delay of 
+real-time traffic in the network. The average delay is less than 
+70 ms in the case of insufficient link bandwidth resources. In 
+the case of sudden traffic, the delay changes very little. At the 
+same time, the network data packet loss rate is also reduced. 
+Under normal circumstances, the data packet loss rate of real-
+time services is close to 0.02%, and the average data packet 
+loss rate of non-real-time services is close to 0.1%.In the case 
+of bursty services, the data packet loss rate of real-time 
+services is close to 0.05%, and the average data packet loss 
+rate of non-real-time services is about 0.15%. It has shown 
+that the improvement of the scheduling algorithm based on 
+token bucket and WFQ has effectively improves the network 
+service quality. 
+A
+CKNOWLEDGMENTS 
+The work was supported by the Project of Improving the 
+Basic Ability of Young and Middle-aged Teachers in 
+Guangxi Universities, 2019 “Research on QoS Queue 
+Scheduling Algorithm Based on Network Traffic Supervision” 
+( Grant No. 2019KY0754 );and by Guangxi Key Research 
+and Development ( R&D) program in 2021 “R&D of All-
+terrain Intelligent Inspection and Patrol Robot and Its 
+Industrialization in Military-civilian Integration Field” (Grant 
+No.2020AB39378). 
+ 
+R
+EFERENCES 
+[1] The 50th Statistical Report on China's Internet Development issued by 
+CNNIC.[EB/OL].http://cnnic.cn/n4/2022/0916/c38-10594.html 
+[2] Jianxiu Qin, Jianlin Song, Xiaowen Dai. Research on application of 
+improved WFQ algorithm in train network scheduling[J]. Application 
+Research of Computers, 2019, 36(11):3302-3305. 
+[3] Zhe Du, Zonglian Guo, Liquan Yue. Application of dynamic weighted 
+fair queuing based on queue length in train network[J]. Application 
+Research of Computers, 2020,37(S1):76-78. 
+[4] Zuber Patel, Upena Datel.Implementation and Evaluation of 
+Dynamically Weighted Low Complexity Fair Queuing (DWLC-FQ) 
+Algorithm for Packet Scheduling in WiMAX Networks[J]. China 
+Communications, 2016,13(05):128-140. 
+[5] Youwen Lin, Yongyou Luo. Research of WFQ based on Priority 
+Bandwidth Assurance and Weight Improvement[J]. Journal of 
+Guangxi University for Nationalities (Natural Science Edition), 
+2017,23(02):82-86. 
+[6] Chong Tian, Jingquan Zhou. An Improved Scheduling Algorithm 
+Based on Weighted Fair Queue[J]. Computer Technology and 
+Development, 2013,23(06):71-73+78. 
+[7] Yiping Guo, Guyu Hu, Dongsheng Shao. QOGMP: QoS-oriented 
+global multi-path traffic scheduling algorithm in software defined 
+network[J]. Scientific Reports, 2022,12(1):1-12. 
+[8] Hong Tang, Xinxin Wang, Yixing Liu. A Traffic Scheduling 
+Algorithm for Bandwidth Fragmentation Minimization and QoS 
+Guarantee in Data Center Network[J]. Journal of Electronics & 
+Information Technology, 2019,41(04):987-994. 
+[9] Debin Wei, Ting Shen, Li Yang, Yaowen Qi. Network queue 
+scheduling algorithm based on self-similar traffic level grading 
+prediction[J]. Journal on Communications, 2020,41(04):182-189. 
+71
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 7 =====
+[10] Gang Wang, Zhenyu Liao, Yong Liang, Linlin Xiong. Research on 
+Queue Scheduling Technology in IP Service Network[C]. National 
+Academic Conference on Signal and Intelligent Information 
+Processing and Application. 2022:268-273. 
+[11] Yang Zhou, Gang Wang. Research on QoS Policy Optimization of 
+Aerospace Service Network Based on OPNET[C]. Proceedings of the 
+16th National Symposium on Signal and Intelligent Information 
+Processing and Application. 2022:208-214. 
+[12] Zhe Du. The Research of TCSN Scheduling Simulation Based on The 
+Traffic shaping Control and Improved Dynamic WFQ Algorithm[D]. 
+Southwest Jiaotong University, 2020. 
+[13] Zhenyu Wang. Research on QoS Queue Scheduling Algorithms 
+Optimization[D]. Jilin Agricultural University, 2019. 
+[14] Filder M, Sander V, Klimala W. Traffic Shaping in Aggregate-Based 
+Networks: Implementation and Analysis[J]. Computer 
+Communications, 2005, 28(3): 274-286. 
+[15] Zhenyu Liu. The Study and Implementation of Network Flow Control 
+Technology Based on the Token Barrels[D]. Inner Mongolia 
+University, 2012. 
+[16] Mili Guan. Research on Queue Scheduling Algorithm Optimization of 
+IP Voice Packet[D]. Xi 'an University of Science and Technology, 
+2021. 
+ 
+72
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:05:28 UTC from IEEE Xplore.  Restrictions apply. 

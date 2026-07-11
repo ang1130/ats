@@ -1,0 +1,35 @@
+# 基于文献参数的动态场景脚本
+# 该文件仍属于 Python 单跳 PoC 配置，不是 OMNeT++ 标准实验。
+
+duration: 2.0
+
+# 初始低负载：3 条高优先级控制流 + 1 条中优先级流
+initial_tt_flows: [0, 1, 2, 10]
+
+events:
+  # 0.5s 阶跃：加入更多高/中优先级流，使 Static-Low 出现违约风险
+  - time: 0.5
+    type: step
+    action: add_tt_flows
+    params:
+      flows:
+        - { id: 3,  period: 500.0e-6,  size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+        - { id: 4,  period: 500.0e-6,  size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+        - { id: 5,  period: 500.0e-6,  size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+        - { id: 11, period: 1000.0e-6, size_bytes: 750, priority: 6, deadline: 600.0e-6 }
+        - { id: 12, period: 1000.0e-6, size_bytes: 750, priority: 6, deadline: 600.0e-6 }
+
+  # 1.0s 突发：事件触发告警流
+  - time: 1.0
+    type: burst
+    params:
+      n_packets: 30
+      size_bytes: 150
+      spread: 100.0e-6
+
+  # 1.5s 回落：移除新增流
+  - time: 1.5
+    type: step
+    action: remove_tt_flows
+    params:
+      flow_ids: [3, 4, 5, 11, 12]

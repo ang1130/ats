@@ -1,0 +1,47 @@
+# 流量与链路参数配置
+# 文献依据见 docs/ats-references.md
+
+link:
+  bandwidth: 1.0e9        # 1 Gbps, TSN 仿真典型值 (CyclicSim/INET 默认)
+  propagation_delay: 5.0e-6  # 5 us, 单跳传播时延
+
+# 时延红线 (硬实时约束 C1)
+deadline:
+  D_max: 10.0e-3          # 10 ms, 工业闭环控制典型量级 (IEC/IEEE 60802)
+  epsilon: 0.01           # 99% 可靠性
+
+# ATS 整形器参数范围 (决策变量可行域 C3/C4)
+ats:
+  r_min: 1.0e6            # 1 Mbps
+  r_max: 1.0e9            # 1 Gbps (不超过链路容量)
+  b_min: 1.0e3            # 1000 bits
+  b_max: 1.0e6            # 1 Mbit
+  max_queue_packets: 1000 # 队列上限(包数), 超过丢包
+  # 静态默认配置 (基线 B1 用, 后续由 M8 标定替代)
+  # 按稳态低谷配置, 高峰 TT/ET 流量超过 r 时违约 -> 体现自适应价值
+  r_default: 8.0e6        # 8 Mbps (稳态 TT/ET ~2Mbps, 高峰~12Mbps 时部分违约)
+  b_default: 20.0e3       # 20 Kbit
+
+# TT 周期控制流 (Craciunas et al., EMSOFT 2016)
+tt_flows:
+  - { id: 0, period: 2.0e-3,  size_bytes: 64  }
+  - { id: 1, period: 5.0e-3,  size_bytes: 64  }
+  - { id: 2, period: 5.0e-3,  size_bytes: 128 }
+  - { id: 3, period: 10.0e-3, size_bytes: 128 }
+  - { id: 4, period: 10.0e-3, size_bytes: 64  }
+
+# ET 事件触发流 (Zhao et al., TSN features comparison)
+et:
+  size_bytes: 128
+  # 由 scenario.yaml 的 BurstEvent 注入, 不在此周期生成
+
+# BE 尽力而为流 (背景流量, 泊松到达)
+be:
+  rate: 8.0e6             # 8 Mbps 平均到达速率 (与 TT/ET 竞争 ATS 带宽)
+  size_bytes: 1500
+
+# 仿真控制
+sim:
+  duration: 0.5           # 0.5s (Week1 跑通用; 主实验用 scenario 里的 120s)
+  seed: 42
+  monitor_interval: 50.0e-3  # 50ms 状态采样

@@ -1,0 +1,1178 @@
+
+
+===== PAGE 1 =====
+CyclicSim: Comprehensive Evaluation of Cyclic
+Shapers in Time-Sensitive Networking
+Rubi Debnath 1, Luxi Zhao 2, Mohammadreza Barzegaran 3, and Sebastian Steinhorst 4
+1,4TUM School of Computation, Information and Technology, Technical University of Munich, Germany
+2Department of Electronic and Information Engineering, Beihang University, Beijing, China
+3Department of Electrical Engineering and Computer Science, University of California, Irvine, USA
+1,4firstname.lastname@tum.de, 2zhaoluxi@buaa.edu.cn, 3barzegm1@uci.edu
+Abstract—Cyclic Queuing and Forwarding (CQF) is a key
+Time-Sensitive Networking (TSN) shaping mechanism that en-
+sures bounded latency using a simple gate control list (GCL).
+Recently, variants of CQF, including Cycle Specific Queuing and
+Forwarding (CSQF) and Multi Cyclic Queuing and Forwarding
+(MCQF), have emerged. While popular TSN mechanisms such
+as the Time-Aware Shaper (TAS), Asynchronous Traffic Shaper
+(ATS), Credit-Based Shaper (CBS), and Strict Priority (SP) have
+been extensively studied, cyclic shapers have not been thoroughly
+evaluated. This paper presents a comprehensive analysis of CQF,
+CSQF, and MCQF, providing insights into their performance. We
+quantify delays through simulations and quantitative analysis
+on both synthetic and realistic networks. For the first time,
+we introduce an open-source OMNeT++ and INET4.4 based
+framework capable of modeling all three cyclic shaper variants.
+Our tool facilitates the validation of new algorithms and serves
+as a benchmark for cyclic shapers. Our evaluations reveal that
+MCQF supports diverse timing requirements, whereas CSQF,
+with its additional queue, often results in larger delays and jitter
+for some TT flows compared to CQF. Additionally, CSQF does
+not demonstrate significant advantages in TSN networks where
+propagation delays are less critical than in wide-area networks
+(W ANs).
+Index Terms —Time-sensitive networking, cyclic queuing and
+forwarding, cycle specific queuing and forwarding, multi cyclic
+queuing and forwarding, simulation, performance analysis.
+I. I NTRODUCTION
+Time-Sensitive Networking (TSN) [1], [2] is revolution-
+izing not only the industrial domain but also the aviation,
+vehicular, and spacecraft sectors by providing deterministic
+communication for layer-2 networks. TSN, with its further
+extension into the wireless domain such as 5G-TSN [3] and
+WiFi-TSN targets deterministic communication for wireless
+movable robot arms and devices in cross-domain networks. As
+the need for timing guarantees grows, so does the demand for
+fast and scalable algorithms, precise verification methods, and
+simulation-based verification tools. The IEEE 802.1 TSN Task
+Group (TG) is working toward developing a TSN suite that
+includes sub-standards for IEEE 802.1 Ethernet. As a result,
+TSN offers multiple sub-standards featuring various shaping
+and scheduling mechanisms that provide different quality of
+service (QoS) levels, such as the Time-Aware Shaper (TAS)
+[4], Asynchronous Traffic Shaper (ATS) [5], Credit-Based
+Step 1
+Time Slot (T)
+Queue assignment
+Offset assignment (φ)
+TG1, TG2, TG3
+Group assignment (Gx)
+Queue assignment
+Offset assignment (φ)
+Offline Cyclic Shaper Configuration
+Topology
+Flow information
+CyclicSim
+Simulative Verification
+Network in Operation
+Delay and performance evaluation
+Our Contribution
+CQF
+&
+CSQF
+MCQF OMNeT++
+CQF MCQFCSQF
+INET
+Fig. 1: Overview of the cyclic shapers implementation and
+verification highlighting our contribution.
+Shaper (CBS) [6], and Cyclic Queuing and Forwarding (CQF)
+[7].
+As the most popular mechanism in TSN technology, the
+TAS scheduling mechanism has been extensively studied over
+the years. TAS provides timing guarantees and zero jitter by
+precisely opening and closing gates for Time-Triggered
+(TT) traffic types. This gate mechanism is referred to as the
+Gate Control List (GCL). However, generating the GCL for
+TAS is an NP-hard problem, and its complexity scales with
+the network size and the number of flows. Consequently,
+related work [8]–[10] has proposed using various shaping
+mechanisms, such as CBS, ATS, and CQF, in mixed-criticality
+networks to alleviate the load on TAS.
+Like TAS, CQF is also based on the GCL. CQF is gaining
+popularity due to its simple GCL operation and straightforward
+Worst-Case Delay (WCD) calculation. Although CQF does
+not provide the fine-grained scheduling that TAS offers, it
+features easier scheduling configuration with bounded delay
+and jitter. Over the years, different variants of CQF have
+been proposed, such as Cycle Specific Queuing and Forward-
+ing (CSQF) [11] and Multi Cyclic Queuing and Forwarding
+(MCQF) [12], [13]. Therefore, in a mixed-criticality network
+with diverse QoS requirements across various applications,
+selecting the appropriate scheduling and shaping algorithm has
+become increasingly challenging. The CQF standard does not
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+979-8-3315-0805-0/25/$31.00 ©2025 IEEE
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC) | 979-8-3315-0805-0/25/$31.00 ©2025 IEEE | DOI: 10.1109/CCNC54725.2025.10975975
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 2 =====
+Transmission
+Selection Algorithm
+GCL
+Switching Fabric
+Even
+Odd
+Queue 
+Classifier
+(a) CQF architecture.
+Transmission
+Selection Algorithm
+Tolerate
+GCL
+Switching Fabric
+Even
+OddQueue 
+Classifier (b) CSQF (3-queue CQF) architecture.
+G3
+G2
+G1
+Queue 
+Classifier
+Even
+Transmission Selection 
+Algorithm
+BE
+Even
+Odd
+GCL
+Switching Fabric
+Odd
+Tolerate
+Even
+Odd
+Queue 
+Classifier
+Queue 
+Classifier
+Group 
+Classifier (c) MCQF architecture.
+Fig. 2: Architecture of different variants of cyclic shapers in TSN.
+specify the configuration and scheduling algorithm, leaving it
+to the research community to design and implement novel,
+efficient algorithms. These algorithms are often developed
+using mathematical solvers like satisfiability modulo theories
+(SMT) or SAT, or heuristics such as Simulated Annealing
+and Genetic Algorithms. However, the solutions generated
+by these methods are typically verified using Python or cus-
+tom simulators, which lacks comprehensive TSN capabilities,
+potentially leading to errors and inaccuracies. Ideally, the
+verification of these algorithmic solutions should be conducted
+on simulators that accurately replicate real-world scenarios,
+such as OMNeT++, or directly on TSN hardware.
+Since MCQF is not yet standardized and cyclic shapers are
+still evolving, existing TSN switches lack hardware support for
+CQF, 3-queue CQF1, and MCQF. Thus, tools like OMNeT++
+are crucial for identifying the benefits and drawbacks of new
+mechanisms. Simulation tools provide valuable insights into
+the performance and behavior of TSN mechanisms under var-
+ious conditions, eliminating the need for expensive and com-
+plex physical hardware testbeds. As TSN research progresses,
+supporting all TSN mechanisms and their combinations be-
+comes increasingly important [9]. Although OMNeT++ 2 is
+widely used for TSN simulation [9], there is currently no open-
+source tool that can simulate all cyclic shaper variants. This
+need forms the core motivation behind our paper.
+Motivation: The major roadmap for TSN cyclic shapers
+involves three critical steps: (i) designing the scheduling or
+configuration algorithm (shown as Step 1 in Fig. 1), (ii)
+verifying the scheduling algorithm (shown as Step 2 in Fig. 1),
+and (iii) conducting hardware evaluation. While Konstantinous
+et al. proposed scheduling algorithms for different variants of
+cyclic shapers in [13], they relied on a Python-based simulator
+for verification. Similarly, other related works [14]–[17] also
+used custom Python or other software-based tools to verify
+their algorithms. This limitation has hindered comprehensive
+validation, universal benchmarking, and broader adoption of
+1In this paper, CSQF for TSN is referred to as 3-queue CQF to distinguish
+it from the CSQF used in Layer-3 DetNet. Details are provided in Section II-B.
+2https://omnetpp.org/
+cyclic shapers. Although INET 4.4 3 has implemented many
+TSN features, providing a common verification and simulation
+tool for everyone, it still lacks native support for cyclic
+shapers. To address this, we have developed an open-source
+OMNeT++ framework that supports all cyclic shaper variants,
+bridging the existing gap in simulation tools. Our framework
+enables the research community to validate cyclic shaper algo-
+rithms, eliminating the need for custom simulators and facil-
+itating rigorous testing. This paper introduces our OMNeT++
+and INET4.4 based simulation framework. Additionally, we
+share implementation-specific insights and key findings to
+further support the development and understanding of these
+mechanisms. In summary, our key contributions are:
+1) Cyclic Shaper Simulation: We introduce an open-
+source simulator that supports different types of cyclic
+shapers in TSN, as detailed in Section II).
+2) Benchmarking Cyclic Shapers: We provide configu-
+rations for various cyclic shapers to assist the scientific
+community in validating and benchmarking new algo-
+rithms. This enables effective verification and compari-
+son, as discussed in Section III. Additionally, we explore
+key findings and the rationale behind our implementation
+choices in Section IV.
+3) Extensive Evaluation: We conduct comprehensive ex-
+periments to evaluate the accuracy and performance of
+CQF, CSQF (3-queue CQF), and MCQF in both syn-
+thetic and realistic scenarios, as outlined in Section IV.
+II. C YCLIC SHAPERS
+In this section, we explore the different variants of cyclic
+shapers in TSN. We begin with an overview of CQF, followed
+by CSQF (3-queue CQF), and conclude with MCQF. Although
+these cyclic shapers share some common constraints and prin-
+ciples, each variant has its unique set of constraints. Therefore,
+we first describe the mechanisms and concepts of each cyclic
+shaper, before delving into their commonalities and specific
+constraints.
+3https://inet.omnetpp.org/2022-07-27-INET-4.4.1-released.html
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 3 =====
+4 34 34 34 3T = 50 µs
+Hyperperiod = 400 µs
+T1 3 4 . . . m
+Fig. 3: Hyperperiod Overview of the CQF and 3-queue CQF (CSQF) network operating with one time slot T .
+7 6
+4 3
+2 1
+Group One, ||TG1|| = 25 µs 5 75 7 6 56 5 7 67 6 5 7
+4 34 34 3
+2 1
+Group Two, ||TG2|| = 50 µs
+Group Three, ||TG3|| = 100 µs
+Hyperperiod = 400 µs
+Fig. 4: Hyperperiod overview of the MCQF for three Groups operating with three different time slots TG1, TG2, and TG3.
+A. Cyclic Queuing and Forwarding
+Each TSN switch with CQF capability as shown in Fig. 2a
+has two queues for the CQF mechanism: even and odd queue,
+where in one time slot (T ), one queue keeps receiving the
+incoming TT frames, and the another queue sends the frames
+received in the previous time slot. Time slot denoted as T
+is the granularity of the scheduling in the cyclic shaper. The
+hypercycle or the scheduling cycle denoted as H is divided
+into numbered time slots with a total of m equal time slots
+(refer Fig. 3). Each time slot is denoted as Tj, where j is
+an integer number and j ∈ {1,· · ·, m}. Each time slot Tj is
+of length T and the length is given in µs. A sending node
+in the CQF network may transmit a frame during the time
+slot number j to the next hop. The next intermediary switch
+receives the frame in the same time slot Tj, en-queues it and
+then forwards it to the next switch in time slot number j + 1.
+The end-to-end delay of a TT flow from the sender to the
+receiver is determined exclusively by the time slot duration T
+and number of switches (SW num) in the routing of the TT
+flow. SWnum is determined by the routing taken by the TT
+flow from the sender to the receiver. As the end-to-end delay
+in CQF is dependent on the time slot duration T , deciding on
+a proper T value is crucial in a CQF network. A large time
+slot lead to high end-to-end delay, and small time slot requires
+high bandwidth (BW). Despite these challenges, CQF is well
+suited for real-time applications with loose requirements for
+delay and jitter boundaries [18].
+WCD CQF: The worst case end-to-end delay of the TT flows
+in the CQF network is quantified as follows:
+Max Delay =fi.ϕ + (SWnum + 1)· T + ξ, (1)
+where fi · ϕ is the offset of the flow fi in µs, SWnum is the
+total number of switches in the route of the TT flow, T is
+the time slot in µs, and ξ denotes the network specific delays:
+processing delay, propagation delay, and time synchronization
+error (sync error).
+ξ = delayprocessing + delaypropagation + syncerror. (2)
+BCD CQF: The best case end-to-end delay (BCD) of the TT
+flows in the CQF network is quantified as follows:
+Min Delay =fi.ϕ + (SWnum − 1) · T + ξ. (3)
+Worst-Case Queuing Delay CQF: The worst-case queuing
+delay for CQF is zero because the TT flows received by the
+switch in one time slot are transmitted in the next time slot.
+B. Cycle Specific Queuing and Forwarding (3-queue CQF)
+CSQF is an extension of CQF working with three-queues,
+where the third queue is an additional queue called the
+tolerating queue. CSQF is proposed for the large scale de-
+terministic network called DetNet [11]. DetNet is used to
+provide deterministic communication in layer-3 over Wide
+Area Network (W AN). Unlike TSN, W AN has long-distance
+cables causing long propagation delays which causes the TT
+frames to sometimes arrive in the next time slot to the next
+node. Such frames which arrive late from its designated time
+slot are stored in the tolerating queue. In CSQF, the sending
+time of all nodes along the path between the source and
+destination is known beforehand. Even though, CSQF is not
+standardized for TSN, there is a growing interest in CSQF
+within TSN due to the benefits provided by the tolerating
+queue. This third queue enhances the schedulability of TT
+flows in TSN, making it crucial to study the performance of
+CSQF in TSN networks. In this paper, we implement CSQF for
+layer-2 TSN network. However, the implementation of CSQF
+in TSN is different from the layer-3 CSQF. Therefore, to avoid
+confusion, we hereafter refer the CSQF for TSN as 3-Queue
+CQF as shown in Fig. 2b. Unlike CSQF, in 3-Queue CQF,
+we do not use the segment identifier (SID). In 3-Queue CQF,
+the TT frames are sent to the designated queue based on the
+Queue ID (qid ). TT flows stored in the tolerating queue waits
+for one time slot before transmitting to the next node. Similar
+to CQF, in 3-queue CQF, the network operates with one time
+slot value (T ) and H is divided into m equal time slots (as
+shown in Fig. 3).
+WCD 3-queue CQF: The worst case end-to-end delay of the
+TT flows in the 3-Queue CQF is defined as follows:
+WCD =fi.ϕ + (SWnum + 1)· T + (SWnum · dqueue) +ξ, (4)
+where fi·ϕ is the offset of the flow, SWnum is the total number
+of switches, T is the time slot, ξ denotes the network delays,
+and dqueue is the queuing delay as explained below.
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 4 =====
+Worst-Case Queuing Delay 3-queue CQF: A TT frame is
+delayed for a certain time slot in a 3-queue CQF network after
+being received by the switch. This delay is referred to as the
+queuing delay and is denoted by dqueue. If the TT flow is
+stored in the tolerating queue, it waits for one time slot. The
+worst-case queuing delay for 3-queue CQF is given below:
+dqueue = T. (5)
+C. Multi Cyclic Queuing and Forwarding
+MCQF is the further extension of CQF and 3-queue CQF,
+proposed to overcome the limitations of working with a single
+time slot in the network. Contrary to CQF, TSN 3-queue
+CQF, and DetNet CSQF, MCQF (shown in Fig. 2c) works
+with different Groups, where each Group has two or more
+than two queues. Notably, each MCQF Group works with
+different time slot values denoted as (T Gx) where Gx denotes
+the Group number. The number of queues in a Group
+and the total number of Groups in the MCQF network is
+configurable. In this paper, we assume that the MCQF network
+has three Groups, denoted as G1, G2, and G3. There are
+three queues in Group One, which operates as a 3-queue
+CQF. Group Two and Group Three are each associated
+with two queues, thus operating as CQF. Each Group has a
+unique time slot denoted as TG1, TG2, TG3, where TG1 is the
+time slot value for Group One, TG2 is the time slot value
+for Group Two and TG3 is the time slot value for Group
+Three. H is divided into different numbers of time slots as
+per different Groups. Fig. 4 shows the number of time slots
+in H for different Groups. The three Groups have different
+colors and time slot values as shown in Fig. 4. Based on the
+TGx value, H is divided into different numbers of time slots.
+For example as shown in Fig. 4, H is divided into 16 time
+slots for Group One, 8 time slots for Group Two, and 4
+time slots for Group Three.
+WCD MCQF: The quantitative worst case end-to-end delay
+of the TT flows in the MCQF network is dependent on the
+Group of the TT flow. The WCD is defined as follows:
+WCDGx = fi.ϕ + (SWnum + 1)· TGx + (SWnum · dqueue) +ξ,
+(6)
+where Gx is the Group number, fi ·ϕ is the offset of the flow
+fi in µs, SWnum denotes the total number of switches in the
+routing of the TT flow, dqueue is the queuing delay, TGx is
+the time slot of Group number x, where x ∈ {1, 2, 3}, and ξ
+denotes the network specific delays.
+Worst-Case Queuing Delay MCQF: For MCQF scheduling
+mechanism, the worst case queuing delay (d queue) depends
+on the Group to which the TT flow is assigned. For Group
+One, TT frames can be stored in either one of the two queues
+upon reception, causing the TT frames stored in the third
+queue to wait for one time slot before transmission. Thus,
+the dqueue for Group One flows is one time slot. However,
+for MCQF Group Two and Three flows, TT frames will be
+transmitted in the next time slot and therefore has no waiting
+in the queue. The dqueue for a TT flow (f i) in MCQF network
+is therefore given as follows:
+dqueue(fi) =
+(
+TG1, if fi ∈ G1,
+0, otherwise . (7)
+III. S YSTEM MODEL
+In this section, we briefly describe the system model of
+our paper, consisting of the network architecture, TSN switch
+model, and traffic model.
+A. Network Architecture
+Our TSN network consists of switches (SWs) and end sta-
+tions (ESs). We represent the TSN network as an undirected
+graph denoted with G(V, E) where V denotes the nodes or
+vertices and E denotes the edges or links. V consists of (ESs)
+and (SWs) given as V = (ESs ∪ SWs) and E consists of
+all the links between the nodes in the network given as el ∈
+E where l denotes the link/edge number. The TSN network
+consists of periodic TT flows, all assigned a priority value
+of 7. The payload sizes of these flows are randomly selected
+between 55 and 1500 bytes (B). In our model, we assume
+there are eight queues [1] in the egress port, with all TSN
+flows designated as TT flows having the highest priority. Each
+TT flow (fi) is defined as a tuple of: ∀fi ∈ F ,
+fi = ⟨id, src, dst, period, deadline, size, routing, ϕ⟩,(8)
+where id is the flow number, src is the source, dst is
+the destination, period is the periodicity of the flow in µs,
+deadline is the deadline in µs, size is the payload of the flow
+in bytes, routing is the route of the TT flow from src to the
+dst and ϕ denotes the time offset meaning when the TT flow
+will be sent from the src node.
+Hypercycle: The hypercycle (H) is the scheduling cycle of
+the TSN network. The TT flows in the network are periodic
+in nature and is repeated at regular intervals. Therefore, the
+scheduling cycle is calculated and all the TT flows transmitted
+within H are repeated based on its periodicity. Furthermore,
+H remains the same for all the variants of cyclic shapers and
+is given as follows:
+H = LCM(fi.period), ∀fi ∈ F. (9)
+B. CQF Switch Model
+In the CQF model, the TSN switches are configured with
+CQF scheduling mechanism with two queues: even and odd.
+The CQF mechanism operates with one time slot value de-
+noted as T and the gate operates in a ping-pong fashion in
+every T . T is the time granularity where in every T , one queue
+receives and the another queue transmits. In this paper, our
+model gets all the input from the scheduling and configuration
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 5 =====
+algorithm (for the outline refer Fig. 1). The offset of each TT
+flow is configurable in our model and given as an input from
+the scheduling algorithm. The offset is the time slot when
+the TT flows are sent from the sending node. Introducing the
+offset increases the total number of scheduled flows in the
+TSN network as shown in [14]. For the CQF model we model
+the constraints as follows:
+1) Offset Constraints: The offset of each TT flow is con-
+strained using the below equation:
+∀fi ∈ F : 0≤ fi · ϕ ≤ fi · period. (10)
+2) Queue resource constraint: Since queue resources are
+limited in the TSN switch model, the queue resource constraint
+ensures that incoming flows are fully stored in their respective
+queues. In this paper, we use the following constraint to model
+our queue resources:
+Qoccu(Tj) ≤ Qlen, (11)
+Qf ree(Tj) ≥ fi · size, (12)
+Qlen = Qoccu(Tj) +Qf ree(Tj), (13)
+where Qoccu(Tj) and Qf ree(Tj) denote the occupied and free
+queue sizes in a CQF-capable TSN switch at the T th
+j time
+slot. Qlen represents the total queue length of the TSN switch,
+which is a constant value in our framework. In our framework,
+Qlen can be specified either in bytes or as the number of
+frames the queue can store. In the CQF network, TT frames are
+filtered by the Queue Classifier and sent to the queue
+currently receiving incoming frames.
+C. 3-queue CQF Switch Model
+In the 3-queue CQF model, TSN switches are configured
+with a 3-queue CQF scheduling mechanism that includes three
+queues: even, odd, and tolerating. Like CQF, the 3-queue
+CQF operates with a single time slot value denoted as T .
+However, in 3-queue CQF, during each time slotT , two queues
+receive frames while one queue transmits. The queue resource
+constraints for the 3-queue CQF model are similar to those
+of CQF, as described in Eq. 14, 15, and 16. Unlike CQF,
+3-queue CQF introduces a Queue ID value, denoted as qid,
+which is generated by the scheduling algorithm for each TT
+flow. This qid indicates which queue the TT frame will be
+enqueued in the 3-queue CQF switch model. In our framework,
+the Queue Classifier, as shown in Fig.2b, reads the qid
+value and directs the TT flow to the appropriate queue in
+the TSN switch. The Queue Classifier is implemented
+differently for CQF and 3-queue CQF.
+D. MCQF Switch Model
+In our framework for the MCQF network, TT flows are
+initially filtered by the Group Classifier based on their
+Group number, denoted as gid in our implementation, which
+can be 1, 2, or 3. After filtering by the Group Classifier,
+TT flows are passed to the Queue Classifier. Here,
+the flows are sent to the correct queue within the 3-queue
+CQF Group based on the qid value. For the CQF Group, the
+Queue Classifier identifies the current receiving queue
+and directs the TT frames to these queues. We can also use
+qid for the MCQF Group Two and Three, however, the
+Group Classifier of CQF reads the gate status of the
+queues and knows which queue is currently transmitting and
+which one is receiving.
+1) Queue resource constraint: Since MCQF involves differ-
+ent time slots, the queue resource constraint is given by:
+Qoccu(T j
+Gx) ≤ Qlen, (14)
+Qf ree(T j
+Gx) ≥ fi · size, (15)
+Qlen = Qoccu(T j
+Gx) +Qf ree(T j
+Gx), (16)
+where Qoccu(T j
+Gx) and Qf ree(T j
+Gx) denote the occupied and
+free queue capacities in an MCQF-capable TSN switch at the
+(T j
+Gx)
+th
+time slot. T j
+Gx represents the j-th time slot number
+in H of the MCQF Group number Gx.
+Design Choice: In our framework, the TSN switch
+queue capacity can be configured in two ways: (1) By
+specifying the number of frames the queue can store (an
+integer value), or (2) By specifying the total capacity
+of the queue in Bytes (B).
+IV. E VALUATION AND DISCUSSION
+We implemented the CQF, 3-queue CQF, and MCQF cyclic
+shaper using OMNeT++ and INET4.4. To the best of our
+knowledge, this is the first open-source simulation tool capable
+of modeling all cyclic shaper variants. Additionally, it is the
+first time MCQF has been quantified using OMNeT++. The
+experimental evaluations and the benchmark of the CQF is
+given in our open-source code 4. In our framework, the queue
+resource can be configured either by the number of frames
+or by total capacity in bytes. All experiments and simulations
+were conducted on a Windows laptop equipped with an Intel®
+Processor Core™ i7-10610U CPU running at 1.80GHz, and
+32 GB RAM. In this paper, for CQF and 3-queue CQF, we use
+T = 50µs, and for MCQF, we use TG1 = 25µs,TG2 = 50µs,
+and TG3 = 100µs unless otherwise specified in the Figures.
+A. Key Performance Indicators
+For key performance indicators (KPIs), we selected two
+parameters:
+1) Simulated Maximum End-to-End Delay (SMD): SMD
+denotes the time required for one TT frame to travel
+from the src to the dst, expressed in microseconds (µs).
+4Github: https://github.com/tum-esi/CyclicSim
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 6 =====
+SW1
+(a)
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered Flow Number
+0
+100
+200
+300End-to-End Delay [in µs]
+MCQF
+Group
+One
+MCQF
+Group
+T wo
+MCQF
+Group
+Three
+CQF 3-queue CQF MCQF (b)
+Fig. 5: Verification using the one switch topology (Fig. 5a)
+and OMNeT++ simulation results (Fig. 5b).
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+(a) ERG
+2
+4
+1
+0
+3
+6
+5
+7 (b) RRG
+0
+1
+2
+34
+5
+6 (c) BAG
+Fig. 6: Synthetic Topologies: (a) ERG topology, (b) RRG
+topology, and (c) BAG topology.
+2) Simulated Maximum Jitter (SMJ): SMJ represents the
+maximum variation in SMD for each TT flow.
+B. Test Topologies
+To illustrate the differences between various cyclic shapers,
+we present results for several test topologies:
+1) One Switch Topology: This simple topology, depicted
+in Fig. 5a, consists of a single switch and is used for
+initial verification of all cyclic shapers.
+2) Synthetic Topologies: For synthetic test cases, we em-
+ployed different types of topologies: (1) Erdos Renyi
+Graph (ERG) [19] (Fig. 6a), (2) Random Regular Graph
+(RRG) [19] (Fig. 6b), and (3) Barabasi-Albert Graph
+(BAG) [19] (Fig. 6c).
+3) Industrial Topology: Ring topologies are commonly
+used in industrial applications. Therefore, we used a
+Ring topology, as shown in Fig. 7.
+4) Realistic Topology: For a realistic test case, we uti-
+lized the Orion Crew Exploration Vehicle (CEV) topol-
+ogy [20], depicted in Fig. 8.
+C. One Switch Topology
+In this sub-section, we compare the performance of different
+cyclic shapers using the one switch topology shown in Fig. 5a.
+We simulate this topology to validate our framework and
+ensure accurate results for the cyclic shapers. The simulation
+results, presented in Fig. 5b, show the maximum end-to-end
+delay for the three cyclic shapers categorized by the MCQF
+Group number. The results indicate that the maximum delay
+SW1
+SW8
+SW2
+SW3
+SW4
+SW6
+SW7
+SW5
+SW9
+SW16
+SW10
+SW11
+SW12
+SW14
+SW15
+SW13
+Fig. 7: Ring topology.
+SW12
+SW11
+SW22
+SW13
+SW14
+MIMU3
+MIMU2
+MIMU1
+BFCU
+CMRIU2
+SBAND2
+SBAND1
+DU1 DU2 DU3
+STARTR1 STARTR2
+SW21
+CMRIU1
+SW31
+FCM1 LCM1 RCM1
+SW32
+SW7
+SW41
+GPS1 GPS2 FCM2 LCM2 RCM2
+SW8
+SW52
+SW42
+CM2CA
+CM2CB
+SM2CB
+SM2CA
+SW6
+SMRIU2
+SMRIU1
+SW51 SM2CB
+SM1CBCM1CA CM1CB
+Fig. 8: Orion topology.
+for MCQF Group One is lower than that of CQF and 3-
+queue CQF, primarily because the time slot (T G1) for MCQF
+G1 is smaller than the T value used for CQF and 3-queue CQF.
+For validation, we include the theoretical upper and lower
+bounds: θup and θlow denotes the theoretical upper and lower
+bounds for CQF, ϵup and ϵlow for 3-queue CQF, and ϕup and
+ϕlow for MCQF in the same graph as shown in Fig. 9a, 9b, and
+9c. This allows us to demonstrate that the minimum, mean, and
+maximum simulated delays remain within these bounds. The
+results confirm that the simulated delays are consistent with
+the theoretical expectations, thereby validating the accuracy of
+our simulation framework. Fig. 10a, 10b, and 10c illustrate the
+jitter for CQF, 3-queue CQF, and MCQF, respectively. Notably,
+the jitter increases for MCQF as the flow transitions to Group
+Three, indicating a higher variation in delay for these flows.
+Finding 1: CQF provides consistent QoS across all
+traffic types and performs well in scenarios with a single
+set of timing requirements.
+D. Synthetic Topologies
+Fig. 11a and 11b present the delay and jitter for three
+different topologies: ERG, RRG, and BAG. The outliers
+showing larger delays for MCQF correspond to the flows in
+Group Three. Notably, MCQF consistently exhibits lower
+delays compared to CQF and 3-queue CQF, primarily because
+the time slot value for Group One in MCQF is smaller.
+Interestingly, 3-queue CQF does not demonstrate any delay
+advantage over CQF. In fact, the delay for 3-queue CQF is
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 7 =====
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+0
+50
+100
+150
+200
+250
+300End-to-End Delay [in µs]low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+up
+low
+CQF Min
+CQF Mean
+CQF Max
+CQF Min
+CQF Mean
+CQF Max
+(a) CQF.
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+0
+50
+100
+150
+200
+250
+300End-to-End Delay [in µs]
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+up
+low
+3-queue CQF Min
+3-queue CQF Mean
+3-queue CQF Max
+3-queue CQF Min
+3-queue CQF Mean
+3-queue CQF Max (b) 3-Queue CQF.
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+0
+50
+100
+150
+200
+250
+300End-to-End Delay [in µs]
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+low
+up
+ up
+low
+MCQF Min
+MCQF Mean
+MCQF Max
+MCQF Min
+MCQF Mean
+MCQF Max (c) MCQF.
+Fig. 9: End-to-End Delay: quantitative upper bound, lower bound and simulative delay for one switch topology (Fig. 5a).
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+200
+150
+100
+50
+0
+50
+100
+150
+200
+250
+300
+Jitter [in µs]
+CQF Min Jitter
+CQF Mean Jitter
+CQF Max Jitter
+(a) CQF.
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+200
+150
+100
+50
+0
+50
+100
+150
+200
+250
+300
+Jitter [in µs]
+3-queue CQF Min Jitter
+3-queue CQF Mean Jitter
+3-queue CQF Max Jitter (b) 3-Queue CQF.
+0 1 2 3 4 5 6 7 8 9 10 11
+Time Triggered (TT) Flow Number
+200
+150
+100
+50
+0
+50
+100
+150
+200
+250
+300
+Jitter [in µs]
+MCQF Min Jitter
+MCQF Mean Jitter
+MCQF Max Jitter (c) MCQF.
+Fig. 10: Jitter comparison for one switch topology (Fig. 5a).
+/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029
+/uni00000026/uni0000005c/uni00000046/uni0000004f/uni0000004c/uni00000046/uni00000003/uni00000036/uni0000004b/uni00000044/uni00000053/uni00000048/uni00000055/uni00000003/uni00000039/uni00000044/uni00000055/uni0000004c/uni00000044/uni00000051/uni00000057
+/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013
+/uni00000018/uni00000013/uni00000013
+/uni00000019/uni00000013/uni00000013
+/uni0000001a/uni00000013/uni00000013
+/uni0000001b/uni00000013/uni00000013
+/uni0000001c/uni00000013/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013/uni00000036/uni0000004c/uni00000050/uni00000058/uni0000004f/uni00000044/uni00000057/uni00000048/uni00000047/uni00000003/uni00000030/uni00000044/uni0000005b/uni0000004c/uni00000050/uni00000058/uni00000050/uni00000003/uni00000027/uni00000048/uni0000004f/uni00000044/uni0000005c/uni00000003/uni0000000b/uni00000036/uni00000030/uni00000027/uni0000000c/uni00000003/uni0000003e/uni0000004c/uni00000051/uni00000003/uni00000097/uni00000056/uni00000040
+/uni00000028/uni00000035/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c/uni00000035/uni00000035/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c/uni00000025/uni00000024/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c
+(a) Simulated Maximum End-to-End Delay
+/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029/uni00000026/uni00000034/uni00000029/uni00000016/uni00000010/uni00000054/uni00000058/uni00000048/uni00000058/uni00000048
+/uni00000026/uni00000034/uni00000029
+/uni00000030/uni00000026/uni00000034/uni00000029
+/uni00000026/uni0000005c/uni00000046/uni0000004f/uni0000004c/uni00000046/uni00000003/uni00000036/uni0000004b/uni00000044/uni00000053/uni00000048/uni00000055/uni00000003/uni00000039/uni00000044/uni00000055/uni0000004c/uni00000044/uni00000051/uni00000057
+/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013
+/uni00000018/uni00000013/uni00000013
+/uni00000019/uni00000013/uni00000013
+/uni0000001a/uni00000013/uni00000013
+/uni0000001b/uni00000013/uni00000013
+/uni0000001c/uni00000013/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013/uni00000036/uni0000004c/uni00000050/uni00000058/uni0000004f/uni00000044/uni00000057/uni00000048/uni00000047/uni00000003/uni00000030/uni00000044/uni0000005b/uni0000004c/uni00000050/uni00000058/uni00000050/uni00000003/uni0000002d/uni0000004c/uni00000057/uni00000057/uni00000048/uni00000055/uni00000003/uni0000000b/uni00000036/uni00000030/uni0000002d/uni0000000c/uni00000003/uni0000003e/uni0000004c/uni00000051/uni00000003/uni00000097/uni00000056/uni00000040
+/uni00000028/uni00000035/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c/uni00000035/uni00000035/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c/uni00000025/uni00000024/uni0000002a/uni00000003/uni00000037 /uni00000052/uni00000053/uni00000052/uni0000004f/uni00000052/uni0000004a/uni0000005c (b) Simulated Maximum Jitter
+Fig. 11: End-to-End Delay and Jitter comparison for CQF, 3-queue CQF and MCQF for different topologies.
+larger, attributed to the tolerating queue. While 3-queue CQF
+can schedule a higher number of flows due to the additional
+queue, this comes at the cost of increased delay. Additionally,
+the jitter is higher for both 3-queue CQF and MCQF, with
+the TT flows in MCQF’s Group Three experiencing the
+highest jitter, as the time slot configuration directly influences
+jitter values. However, this elevated jitter is specific to Group
+Three flows. In contrast, Group One and Group Two
+flows in MCQF experience smaller delays and lower jitter
+values, demonstrating the time slot’s significant impact on
+performance across different flow Groups.
+E. Industrial Ring Topology
+Fig. 12 illustrates the SMD of the cyclic shapers for the
+ring topology (refer Fig. 7). The flows on the x-axis are sorted
+from the smallest to the largest gid value. As seen in previous
+results, MCQF Group One flows have the smallest delay,
+while Group Three flows have the largest. In contrast, CQF
+provides consistent delay for all flows, with the primary factor
+being the number of switches involved in routing the TT flow.
+Meanwhile, 3-queue CQF exhibits larger delays compared to
+both CQF and MCQF for Group One and Group Two
+flows. MCQF is clearly well-suited for accommodating both
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 8 =====
+hard real-time and soft real-time traffic types.
+Finding 2: 3-queue CQF leads a larger delay and jitter
+than CQF due to the tolerating queue. 3-queue CQF
+is not highly advantageous in TSN as the propagation
+delays and time synchronization error is not significant
+in TSN as compared to W AN.
+Finding 3: MCQF demonstrates its superiority by ef-
+fectively supporting diverse timing requirements accom-
+modating very small to very large timing requirements.
+Finding 4: Most of the configuration and scheduling
+algorithm do not consider the propagation delay, switch-
+ing delay, time synchronization error etc. The simulation
+results shows that these delays cannot be ignored and
+should be included into the optimization phase.
+F . Realistic Topology
+Fig. 13 shows the delay performance of the Orion topology
+(refer Fig. 8). MCQF outperforms CQF and 3-queue CQF for
+all the three Groups. As the network load is very low in the
+Orion topology, the gate opening and closing is not very
+frequent and there are no competing flows. Therefore, MCQF
+Group Three flows exhibit good performance and MCQF
+totally outperforms CQF and 3-queue CQF.
+Finding 5: CSQF in Layer 3 differs from the TSN
+3-queue CQF. Therefore, it is crucial to use accurate
+terminology to avoid confusion.
+Finding 6: TSN switch queue capacity directly affects
+the overall performance of the TT flows in the network.
+Finding 7: MCQF network requires the gid and qid
+information. Adding this information directly to the
+Ethernet header would increase its header size. A more
+efficient approach, as used in our implementation, is to
+utilize tags for the TT flow, which simplifies the process
+and optimizes the implementation.
+V. R ELATED WORK
+In recent years, extensive research [10], [20]–[22], [25]–
+[27] has analyzed the performance of various TSN shaping
+mechanisms. Among these, OMNeT++ is the most widely
+used tool, as highlighted in [9]. Simulation methods provide
+valuable insights into real-world scenarios and help analyze
+network performance. Moreover, simulation is often the most
+practical approach for verifying network performance when
+1 6 11 16 21 26 31 36 41 46 51 56
+Time Triggered (TT) Flow Number
+0
+100
+200
+300
+400
+500
+600
+700
+800
+900Simulated Maximum Delay (SMD) [in µs]
+CQF (50µs)
+3-queue CQF (50µs)
+MCQF (10,50,100)µs
+MCQF (25,50,100)µs
+Fig. 12: CQF, 3-queue CQF, MCQF: End-to-End Delay com-
+parison for Ring topology (Fig. 7).
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
+Time Triggered (TT) Flow Number
+0
+100
+200
+300
+400
+500
+600
+700
+800
+900
+1000
+1100
+1200
+1300
+1400
+1500Simulated Maximum Delay (SMD) [in µs]
+CQF (125µs)
+3-queue CQF (125µs)
+MCQF (25,50,125)µs
+CQF (50µs)
+3-queue CQF (50µs)
+MCQF (25,50,100)µs
+Fig. 13: CQF, 3-queue CQF, MCQF: End-to-End Delay com-
+parison for Orion topology (Fig. 8).
+Table I: Cyclic Shapers Simulation Comparison
+Related Work CQF CSQF (3-queue CQF) MCQF Open Source
+[21]
+[22]
+[23]
+[24]
+INET4.4
+CyclicSim
+no or n/a, partially, yes
+hardware resources are either limited or unavailable. Nasrallah
+et al. evaluated the average and the maximum delay of TAS in
+industrial ring topologies for sporadic and periodic traffic types
+and also evaluated the Asynchronous Traffic Shaper (ATS)
+using OMNeT++. Arestova et al. compared TAS and frame
+preemption (FP) with strict priority (SP) in [26]. Debnath et
+al. further showed the individual and the combined shaper
+simulative analysis of TSN shapers in [10] and [20]. However,
+none of these studies cover different variants of CQF.
+Wang et al. in [21] provided a performance evaluation of
+CQF and compared it with IEEE 802.1Qbv TAS [4]. Their
+goal was to compare the performance of CQF against TAS.
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 9 =====
+The paper highlighted that while the end-to-end delay of CQF
+is bounded, CQF provides a larger delay than TAS and fails
+to offer the same level of determinism due to jitter. Leonardi
+et al. in [22] further evaluated the performance of CQF and
+compared it against CBS in an automotive scenario. They
+used OMNeT++ to simulate the CQF and CBS networks.
+Their paper shows the performance of the TSN traffic when
+CQF is used instead of CBS. Luo et al. in [24] used the
+CoRE4INET framework and performed the evaluation of
+CQF and compared it against TAS. Although, CoRE4INET
+framework is developed based on the older version of INET
+and therefore lacks many complex features which is required
+by TSN. Furthermore, both of the works have not evaluated
+the CSQF and the MCQF network in their work. To the best
+of our knowledge, currently there is no available simulative
+performance evaluation of CQF and its variants. Table I
+presents the comparison between the existing cyclic shaper
+simulation works with our framework: CyclicSim.
+VI. C ONCLUSION
+In this paper, we present an open-source framework for
+simulating the different variants of cyclic shapers in TSN.
+We provide a comprehensive performance evaluation of CQF,
+CSQF (3-queue CQF), and MCQF across one-hop, synthetic,
+industrial, and realistic test cases. Our evaluation reveals that
+the end-to-end delay is higher for the CSQF (3-queue CQF)
+compared to CQF, primarily due to the tolerating queue. Both
+CQF and CSQF (3-queue CQF) operate with a single time
+slot, limiting their ability to support diverse traffic types with
+varying timing requirements. In TSN networks, the tolerating
+queue is often underutilized since propagation delay and time
+synchronization errors are typically negligible or constant. In
+contrast, MCQF supports a wide range of timing requirements,
+offering a diverse range of QoS options. Therefore, selecting
+the appropriate cyclic shaper is crucial based on the specific
+application. In future work, we plan to evaluate the combined
+shaping mechanisms of cyclic shapers with TAS, CBS, ATS,
+SP and FP.
+REFERENCES
+[1] “IEEE standard for local and metropolitan area network–bridges and
+bridged networks,” IEEE Std 802.1Q-2018 (Revision of IEEE Std
+802.1Q-2014), pp. 1–1993, 2018.
+[2] A. Nasrallah, V . Balasubramanian, A. S. Thyagaturu, M. Reisslein,
+and H. Elbakoury, “Cyclic queuing and forwarding for large scale
+deterministic networks: A survey,” CoRR, vol. abs/1905.08478, 2019.
+[3] R. Debnath, M. S. Akinci, D. Ajith, and S. Steinhorst, “5GTQ: QoS-
+Aware 5G-TSN simulation framework,” in 2023 IEEE 98th Vehicular
+Technology Conference (VTC2023-Fall), 2023, pp. 1–7.
+[4] “IEEE standard for local and metropolitan area networks – bridges and
+bridged networks - amendment 25: Enhancements for scheduled traffic,”
+IEEE Std 802.1Qbv-2015, pp. 1–57, 2016.
+[5] “IEEE standard for local and metropolitan area networks–bridges and
+bridged networks - amendment 34:asynchronous traffic shaping,” IEEE
+Std 802.1Qcr-2020, pp. 1–151, 2020.
+[6] “IEEE standard for local and metropolitan area networks - virtual
+bridged local area networks amendment 12: Forwarding and queuing
+enhancements for time-sensitive streams,” IEEE Std 802.1Qav-2009
+(Amendment to IEEE Std 802.1Q-2005), pp. C1–72, 2010.
+[7] “IEEE standard for local and metropolitan area networks–bridges and
+bridged networks–amendment 29: Cyclic Queuing and Forwarding,”
+IEEE 802.1Qch-2017, pp. 1–30, 2017.
+[8] L. Zhao, P. Pop, and S. Steinhorst, “Quantitative performance com-
+parison of various traffic shapers in Time-Sensitive Networking,” IEEE
+Transactions on Network and Service Management , vol. 19, no. 3, pp.
+2899–2928, 2022.
+[9] Z. Wang, F. Luo, Y . Li, H. Gan, and L. Zhu, “Schedulability analysis
+in time-sensitive networking: A systematic literature review,” 2024.
+[Online]. Available: https://arxiv.org/abs/2407.15031
+[10] R. Debnath, P. Hortig, L. Zhao, and S. Steinhorst, “Advanced modeling
+and analysis of individual and combined TSN shapers in OMNeT++,” in
+2023 IEEE 29th International Conference on Embedded and Real-Time
+Computing Systems and Applications (RTCSA), 2023, pp. 176–185.
+[11] Z. Li, “Segment routing (SR) based bounded latency,” https://datatracker.
+ietf.org/doc/html/draft-chen-detnet-sr-based-bounded-latency-01, [Ac-
+cessed 04-02-2024].
+[12] N. Finn, “Multiple cyclic queuing and forwarding,” https://www.ieee802.
+org/1/files/public/docs2021/new-finn-multiple-CQF-0921-v02.pdf,
+2021, [Accessed 04-02-2024].
+[13] K. Alexandris, P. Pop, and T. Wang, “Configuration and evaluation of
+Multi-CQF shapers in IEEE 802.1 Time-Sensitive Networking (TSN),”
+IEEE Access, vol. 10, pp. 109 068–109 081, 2022.
+[14] J. Yan, W. Quan, X. Jiang, and Z. Sun, “Injection Time Planning: Making
+CQF practical in time-sensitive networking,” in IEEE INFOCOM 2020
+- IEEE Conference on Computer Communications, 2020, pp. 616–625.
+[15] F. Luo, Z. Wang, Y . Guo, M. Wu, W. Feng, and Z. Sun, “Research
+on cyclic queuing and forwarding with preemption in time-sensitive
+networking,” IEEE Embedded Systems Letters, pp. 1–1, 2023.
+[16] Y . Liu, D. Zhou, S. Zhan, Y . Xin, J. Lin, X. Feng, E. Shi, Y . Qi, G. Chen,
+J. Zheng, Y . Wang, and X. Zheng, “MCCQF: Low-latency transmission
+based on IEEE 802.1 Qch for hierarchical networking,” in ICC 2023
+- IEEE International Conference on Communications, 2023, pp. 6052–
+6058.
+[17] Y . Liu, Z. Cheng, J. Ren, and D. Yang, “Joint routing and scheduling
+for CQF,” in 2022 7th International Conference on Computer and
+Communication Systems (ICCCS), 2022, pp. 1–5.
+[18] H. Nie, Y . Su, W. Zhao, and J. Mu, “Hybrid traffic scheduling in time-
+sensitive networking for the support of automotive applications,” IET
+Communications, vol. 18, no. 2, pp. 111–128, 2024.
+[19] X. He, X. Zhuge, F. Dang, W. Xu, and Z. Yang, “DeepScheduler:
+Enabling flow-aware scheduling in Time-Sensitive Networking,” inIEEE
+INFOCOM 2023 - IEEE Conference on Computer Communications,
+2023, pp. 1–10.
+[20] R. Debnath, P. Hortig, L. Zhao, and S. Steinhorst, “Quantifying the
+impact of frame preemption on combined tsn shapers,” in NOMS 2024-
+2024 IEEE Network Operations and Management Symposium, 2024, pp.
+1–9.
+[21] B. Wang, F. Luo, and Z. Fang, “Performance analysis of IEEE 802.1Qch
+for automotive networks: Compared with IEEE 802.1 Qbv,” in 2021
+IEEE 4th International Conference on Computer and Communication
+Engineering Technology (CCET), 2021, pp. 355–359.
+[22] L. Leonardi, L. L. Bello, and G. Patti, “Performance assessment of the
+IEEE 802.1Qch in an automotive scenario,” in 2020 AEIT International
+Conference of Electrical and Electronic Technologies for Automotive
+(AEIT AUTOMOTIVE), 2020, pp. 1–6.
+[23] F. Luo, B. Wang, Z. Yang, P. Zhang, Y . Ma, Z. Fang, M. Wu, and
+Z. Sun, “Design methodology of automotive time-sensitive network
+system based on OMNeT++ simulation system,”Sensors, vol. 22, no. 12,
+2022.
+[24] F. Luo, Y . Guo, Z. Wang, Z. Yang, Y . Ren, J. Wang, and P. Zhang,
+“Analysis of the performance advantage of cyclic queuing and forward-
+ing mechanism in vehicle time-sensitive network,” in IECON 2023- 49th
+Annual Conference of the IEEE Industrial Electronics Society, 2023, pp.
+1–6.
+[25] A. Nasrallah, A. S. Thyagaturu, Z. Alharbi, C. Wang, X. Shao,
+M. Reisslein, and H. Elbakoury, “Performance comparison of IEEE
+802.1 tsn time aware shaper (TAS) and asynchronous traffic shaper
+(ATS),” IEEE Access, vol. 7, pp. 44 165–44 181, 2019.
+[26] A. Arestova, K.-S. Jens Hielscher, and R. German, “Simulative evalu-
+ation of the tsn mechanisms time-aware shaper and frame preemption
+and their suitability for industrial use cases,” in 2021 IFIP Networking
+Conference (IFIP Networking), 2021, pp. 1–6.
+[27] N. Reusch, M. Barzegaran, L. Zhao, S. S. Craciunas, and P. Pop,
+“Configuration optimization for heterogeneous time-sensitive networks,”
+Real-Time Systems, vol. 59, no. 4, pp. 705–747, 2023.
+2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC)
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:01:02 UTC from IEEE Xplore.  Restrictions apply. 

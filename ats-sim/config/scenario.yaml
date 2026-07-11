@@ -1,0 +1,46 @@
+# 动态场景脚本 (M5)
+# 设计: 让 TT/ET 流量在阶跃后超过保守的静态 r, 制造违约 -> 体现自适应价值
+# TT 流总速率估算: period=1ms,size=512bit => 0.512Mbps/流
+
+duration: 120.0
+
+initial_tt_flows: [0, 1, 2, 3, 4]   # 稳态 ~2Mbps, 远低于 r=20Mbps
+
+events:
+  # 阶跃1: 产线扩产, 高频控制流加入, TT/ET 总速率突破保守 r=5Mbps
+  - time: 30.0
+    type: step
+    action: add_tt_flows
+    params:
+      flows:
+        # 20 条 1ms/512bit = 10.2Mbps, +初始2Mbps => TT/ET ~12Mbps > r=5 => 违约
+        - { id: 5,  period: 1.0e-3, size_bytes: 64 }
+        - { id: 6,  period: 1.0e-3, size_bytes: 64 }
+        - { id: 7,  period: 1.0e-3, size_bytes: 64 }
+        - { id: 8,  period: 1.0e-3, size_bytes: 64 }
+        - { id: 9,  period: 1.0e-3, size_bytes: 64 }
+        - { id: 10, period: 1.0e-3, size_bytes: 64 }
+        - { id: 11, period: 1.0e-3, size_bytes: 64 }
+        - { id: 12, period: 1.0e-3, size_bytes: 64 }
+        - { id: 13, period: 1.0e-3, size_bytes: 64 }
+        - { id: 14, period: 1.0e-3, size_bytes: 64 }
+        - { id: 15, period: 2.0e-3, size_bytes: 128 }
+        - { id: 16, period: 2.0e-3, size_bytes: 128 }
+        - { id: 17, period: 2.0e-3, size_bytes: 128 }
+        - { id: 18, period: 2.0e-3, size_bytes: 128 }
+        - { id: 19, period: 2.0e-3, size_bytes: 128 }
+
+  # 突发: 急停告警
+  - time: 60.0
+    type: burst
+    params:
+      n_packets: 50
+      size_bytes: 128
+      spread: 1.0e-3
+
+  # 阶跃2: 回稳态
+  - time: 90.0
+    type: step
+    action: remove_tt_flows
+    params:
+      flow_ids: [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]

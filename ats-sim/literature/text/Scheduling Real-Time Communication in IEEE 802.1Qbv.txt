@@ -1,0 +1,1352 @@
+
+
+===== PAGE 1 =====
+Scheduling Real-Time Communication in IEEE 802.1Qbv
+Time Sensitive Networks∗
+Silviu S. Craciunas Ramon Serna Oliver Martin Chmelík Wilfried Steiner
+TTT ech Computertechnik AG
+Schönbrunner Straße 7
+1040 Vienna, Austria
+{silviu.craciunas, ramon.serna.oliver, martin.chmelik, wilfried.steiner}@tttech.com
+ABSTRACT
+The enhancements being developed by the Time-Sensitive
+Networking Task Group as part of IEEE 802.1 emerge as
+the future of real-time communication over Ethernet net-
+works for automotive and industrial application domains.
+In particular IEEE 802.1Qbv is key to enabling timeliness
+guarantees via so-called time-aware shapers. In this paper,
+we address the computation of fully deterministic schedules
+for 802.1Qbv-compliant multi-hop switched networks. We
+identify and analyze key functional parameters aﬀecting the
+deterministic behaviour of real-time communication under
+802.1Qbv and, based on a generalized conﬁguration of these
+parameters, derive the required constraints for computing
+oﬄine schedules guaranteeing low and bounded jitter and
+deterministic end-to-end latency for critical communication
+ﬂows. Furthermore, we discuss several optimization direc-
+tions and concrete conﬁgurations exposing trade-oﬀs against
+the required computation time. We also show the perfor-
+mance of our approach via synthetic network workloads on
+top of diﬀerent network conﬁgurations.
+1. INTRODUCTION
+Ethernet has evolved to be the standard open communi-
+cation mechanism for a wide range of application domains
+originally not bound to strict timing requirements. Typical
+design and performance criteria for standard Ethernet de-
+ployments are related to best-eﬀort communication, in which
+maximizing throughput and minimizing average delays are
+primary objectives. In the real-time domain, safety-critical
+timing aspects have been introduced by means of technolo-
+gies like TTEthernet (SAE AS6802 [21, 34]), PROFINET,
+and EtherCAT [27] among others. Recently, the conver-
+gent needs of the industrial automation and automotive do-
+mains are pushing for the standardization of solutions en-
+∗This project has received funding from the European
+Union’s Horizon 2020 research and innovation programme
+under grant agreement N o 700665 (CITADEL).
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for proﬁt or commercial advantage and that copies bear this notice and the full cita-
+tion on the ﬁrst page. Copyrights for components of this work owned by others than
+ACM must be honored. Abstracting with credit is permitted. To copy otherwise, or re-
+publish, to post on servers or to redistribute to lists, requires prior speciﬁc permission
+and/or a fee. Request permissions from permissions@acm.org.
+RTNS ’16, October 19-21, 2016, Brest, France
+c⃝ 2016 ACM. ISBN 978-1-4503-4787-7/16/10. . . $15.00
+DOI: http://dx.doi.org/10.1145/2997465.2997470
+abling mixed-criticality communication allowing real-time
+and best-eﬀort traﬃc to coexist simultaneously within IEEE
+802 networks. Quality of service, as introduced in the IEEE
+802.1BA Audio/Video Bridging (AVB) standard, has raised
+signiﬁcant interest within the industrial and automotive do-
+mains, but falls short of the industry expectations for hard
+real-time applications demanding reliable and fully deter-
+ministic communication [2, 25, 32]. Enhancing the features
+of AVB with fault-tolerant mechanism allowing strict timing
+guarantees with low latency and jitter is desirable to support
+real-time applications over Ethernet.
+The IEEE 802.1 Time Sensitive Networking (TSN) task
+group [20] is in the process of standardizing time-sensitive
+capabilities over IEEE 802 networks by deﬁning a whole
+range of 802.1 sub-standards, covering aspects that range
+from clock synchronization and frame preemption to re-
+dundancy management and scheduled traﬃc enhancements.
+Key enablers of real-time communication in TSN networks
+are a network-wide clock reference with bounded precision,
+known and bounded network latencies (e.g. switch for-
+warding times, link delays), as well as isolation of critical
+and non-critical traﬃc classes through a global communica-
+tion schedule. IEEE 802.1ASrev [20] deﬁnes the basis for
+a network-wide time-synchronization protocol, achieving a
+global network clock and basic fault-tolerance by means of a
+re-election mechanism of the clock master (also called grand-
+master) in case of failures. Time sensitive communication
+takes place via so-called time-sensitive streams (or ﬂows),
+where a stream is deﬁned by a sender (or talker) and one or
+multiple receivers (orlisteners). Individual messages belong-
+ing to a ﬂow are deﬁned using the VLAN identiﬁer (VID)
+of VLAN-tagged frames. Streams can have diﬀerent priori-
+ties deﬁning their traﬃc class, given by the 3 priority bits of
+the priority code point (PCP) of the IEEE 802.1Q header.
+IEEE 802.1Qbv [19] deﬁnes a time-based shaper functional-
+ity enabling time-triggered communication [22] at the egress
+ports. A time-aware shaper is essentially a gate enabling or
+disabling the transmission of frames for a queue following
+the speciﬁcation of a periodic schedule.
+Traditionally, worst-case end-to-end communication la-
+tencies in non-scheduled networks (i.e., using priority
+queues) have been analyzed through methods like network
+calculus [12, 14] or the trajectory approach [4]. In such ap-
+proaches, the end-to-end latency of ﬂows is computed based
+on traﬃc priorities and arrival patterns making composi-
+tional system design and isolation of time behaviour very
+diﬃcult. With the introduction of 802.1Qbv, the comple-
+183
+
+
+===== PAGE 2 =====
+Port A
+(ingress)
+Port C
+(egress)
+Priority 
+filter
+Queue 3
+Queue  2
+Queue 1
+Queue n
+SW
+Engine
+Port B
+(ingress)
+Figure 1: Simpliﬁed view of a 802.1Qbv-capable switch.
+mentary approach, which we present in this paper, is now
+also supported, where correct schedules with respect to in-
+dividual ﬂow requirements are created oﬄine. The major
+beneﬁt of the 802.1Qbv extension is that it allows temporal
+isolation and compositional system design when ﬂows are
+scheduled end-to-end.
+In our previous work [7, 8, 33], we have addressed sev-
+eral scheduling problems in TTEthernet networks. However,
+the particularities of TSN demand diﬀerent solutions than
+those employed in the past. In this paper, we address the
+scheduling problem arising from the IEEE 802.1Qbv exten-
+sion on multi-hop fully switched TSN networks, presenting a
+method for computing static schedules for 802.1Qbv-capable
+network devices using Satisﬁability Modulo Theories (SMT)
+and, alternatively, Optimization Modulo Theories (OMT)
+solvers. We ﬁrst identify key functional parameters aﬀect-
+ing the behaviour of TSN networks and extract a general-
+ized conﬁguration of these parameters for hard real-time net-
+works (Section 2). In Section 3 we describe the formalization
+of the network model used throughout the paper. Based on
+the formalization and the generic conﬁguration, we adapt a
+subset of constraints general to deterministic Ethernet from
+previous work and, additionally, construct TSN-speciﬁc con-
+straints that correctly formulate the real-time behaviour of
+TSN streams (Section 4). In Sections 5 and 6 we discuss
+the implication of diﬀerent conﬁgurations on the scheduling
+problem and present implementation details of our method
+using SMT and OMT solvers together with a discussion on
+optimization objectives. After the experimental evaluation
+in Section 7, we survey related work in Section 8 and con-
+clude the paper in Section 9.
+2. 802.1Qbv FUNCTIONAL PARAMETERS
+Figure 1 depicts a logical representation of a simpliﬁed
+802.1Qbv-capable switch with three ports. The ﬁgure de-
+picts a scenario in which network traﬃc traverses the switch
+from an ingress port to an egress port. Internally, the ports
+are connected to a ﬁlter distributing incoming frames to the
+associated queue of the egress port based on classiﬁcation
+criteria like e.g. the priority code point (PCP) of the IEEE
+802.1Q header. On regular switches with multiple ports, in-
+coming traﬃc will be directed to the corresponding egress
+port by the switching engine. Every port will have a similar
+logical composition on egress as the one depicted, including
+a series of logical queues buﬀering the respective frames un-
+til their transmission. In the most generic representation,
+each 802.1Qbv queue has a timed gate associated to it en-
+abling or disabling the transmission of frames according to
+a predeﬁned static schedule. Hence, scheduled events deter-
+mine at which time instants a queue is opened and traﬃc
+is forwarded to the egress port and at which time instants
+the queue is closed such that any pending traﬃc remains
+buﬀered. If multiple queues are opened at the same time,
+the queue priority determines which of the queues is allowed
+to forward frames.
+We identify two key parameters that aﬀect the timing
+properties of network ﬂows in 802.1Qbv-capable networks,
+namely Device capabilities and Queue conﬁguration.
+One important characteristic is the capability of devices,
+namely, if they are scheduled or not. If the end-systems are
+not scheduled but switches are, frames from the end-nodes
+may arrive in any order to the switches. Therefore, the ﬁrst
+switch on the route has to act as a synchronization gate.
+This synchronization is possible if there are enough queues
+to isolate ﬂows arriving simultaneously, allowing thus each
+of them to be scheduled deterministically. Complementary,
+end-systems may be scheduled but switches are not. In such
+a case, switches act as delay elements but cannot control
+the time of forwarding frames. If end-systems and switches
+are scheduled, the scheduler can plan when to send indi-
+vidual frames of ﬂows such that they arrive with a known
+order at the ﬁrst switch and switches can control forward-
+ing times. We denote a network conﬁguration (G(E)) where
+only end-system are scheduled with Ve and one where only
+switches are scheduled with Vs. We denote fully scheduled
+networks, i.e., all devices are scheduled, with conﬁguration
+Ve+s. Here we focus on deterministic networks with sched-
+uled end-systems and switches and leave the other corner-
+cases for a more in-depth analysis in future work.
+The number of queues per egress port, which translates
+to the number of diﬀerent priorities that can be handled,
+aﬀects the amount of traﬃc and the real-time properties to
+be guaranteed. Another important aspect is how the queues
+operate. Queues may follow a strict priority policy, meaning
+that the gate is always opened and the arbitration is purely
+based on their assigned priority. Using the time-gates, how-
+ever, queues can be scheduled following a time-triggered
+(TT) paradigm, where the priority is overruled by the sched-
+ule, i.e., the schedule of the timed-gate deﬁnes the servicing
+order, not the priority. If queues are scheduled following
+a mutually exclusive pattern, i.e., no two queue gates are
+opened at the same time, the result is a fully deterministic
+forwarding policy. In this paper we focus on creating sched-
+ules for the timed-gates of scheduled queues. We denote
+the queue conﬁguration by the tuple G(Q) =⟨ℵ,ℵtt,ℵprio⟩,
+whereℵ is the total number of queues per port, ℵtt is the
+number of queues operating as scheduled (TT) queues, and
+ℵprio is the remaining number of priority queues. Without
+loss of generality we assume that in the system conﬁgura-
+tion, the scheduled queues always have the highest priorities
+of all queues, including the remaining priority queues.
+Having diﬀerent queue types opens up the possibility to
+have two diﬀerent types of traﬃc, namely scheduled and
+non-scheduled traﬃc. Scheduled traﬃc is assigned to the
+scheduled queues in order to guarantee latency and jitter
+requirements. Non-scheduled traﬃc is isolated from sched-
+uled traﬃc within the priority queues of a device. Within
+the priority queues, non-scheduled ﬂows may interfere with
+each other, but not with scheduled ﬂows (since the associ-
+ated scheduled queues always have higher priority). For the
+non-scheduled traﬃc, worst-case end-to-end latencies in the
+presence of interference have been analyzed through meth-
+184
+
+
+===== PAGE 3 =====
+ods like network calculus [14] or the trajectory approach [4]
+for AFDX networks while recently, similar analysis methods
+have been employed for AVB networks [12].
+Scheduled traﬃc is deﬁned as having requirements on the
+maximum end-to-end latency as well as minimal jitter con-
+straints, i.e., each periodic instance of the communication
+ﬂow has to arrive at the same instant in time. In real-time
+systems, this traﬃc is said to have high criticality. Non-
+scheduled traﬃc cannot be guaranteed with minimal jitter
+and may or may not have requirements on the end-to-end
+latency. In this paper we address the scheduling of high-
+criticality traﬃc for fully-scheduled networks consisting of
+802.1Qbv devices withℵtt≥ 1.
+A system conﬁguration, composed of the 2 parameters
+presented above, is deﬁned by the tuple ⟨G(E),G (Q)⟩. In
+Sections 3 and 4 we introduce the 802.1Qbv-speciﬁc net-
+work and traﬃc model and deﬁne scheduling constraints
+for high-criticality traﬃc, respectively, assuming generic pa-
+rameter conﬁgurations for critical communication, namely
+{Ve+s,⟨n,m,n−m⟩}. Our constraints generate schedules for
+the m queues while ensuring that critical ﬂows meet their
+latency and jitter requirements. Later, in Section 6, we dis-
+cuss several scenarios also including priority queues and the
+resulting trade-oﬀs based on speciﬁc system conﬁgurations.
+3. NETWORK AND TRAFFIC MODEL
+Our work targets multi-hop layer 2 switched Ethernet net-
+works over full-duplex multi-speed physical links. We model
+the network, similar to [8] and [33], as a directed graph
+G(V,L), where the nodes (switches and end-systems) are the
+set of graph vertices (V) and the links between nodes are rep-
+resented through the graph edges (L⊆V×V ). A full-duplex
+physical link between nodesva∈V andvb∈V results in two
+directional logical links, each denoted by an ordered tuple,
+namely [va,v b]∈L and [vb,v a]∈L , respectively. Maintain-
+ing the notation from [8], a physical link [va,v b] is character-
+ized by the tuple ⟨[va,v b].s, [va,v b].d, [va,v b].mt, [va,v b].c⟩,
+where [va,v b].s is the speed of the link, [va,v b].d is the propa-
+gation delay on the medium, and [va,v b].mt is the macrotick
+of the link. We extend the deﬁnition with a new parameter,
+[va,v b].c, which represents the number of available queues
+in the device. Since any given egress port is connected to at
+most one link, we establish an equivalence between the port
+and its associated link. Therefore, we refer to [ va,v b].c as
+the number of egress queues 1 present in the respective port
+as a property of the link. We derive the transmission time
+of a frame between two nodes through the link speed (or
+bit rate) which represents the transfer rate over the physical
+network cable. For e.g. on a 1Gbit/sec link an MTU-sized
+IEEE 802.1Q Ethernet frame of 1542 bytes would have a
+transmission time of 12.336µsec. The propagation delay is
+additional delay on frame arrival resulting from the delay
+on the physical medium and the link length. The macrotick
+is a design property either given by device constraints or
+system-level design speciﬁcations. It speciﬁes the length of
+a discrete time unit deﬁning the granularity of time events
+for the given link.
+A stream, or ﬂow, is a periodic multicast data transmis-
+sion from one sender (talker) to one or multiple receivers
+1The proposed value for this parameter is 8 according to
+802.1Qbv [19], however, we do not put any limitation on
+this number for the scheduling algorithm.
+(listeners). Without loss of generality, we choose to sim-
+plify the notation by restricting the number of receivers
+to one. Enhancing the model to include multicast ﬂows
+is a trivial extension without implications on the valid-
+ity of the presented method. We denote the input set of
+ﬂows by S. Similar to [33], a ﬂow si ∈ S from sender
+node va to receiver node vb, routed through the intermedi-
+ary nodes (i.e. switches) v1,v 2,...,v n−1,v n is expressed as
+si = [[va,v 1], [v1,v 2],..., [vn−1,v n], [vn,v b]]. A ﬂow is char-
+acterized by the tuple⟨si.e2e,s i.L,s i.T⟩, denoting the max-
+imum allowed end-to-end latency, the data size in bytes, and
+the period of the ﬂow, respectively.
+In the model diﬀerentiate between a ﬂow and the instance
+of a ﬂow on a link. An instance of a ﬂow si ∈S routed
+through link [va,v b]∈L is denoted by s[va,vb]
+i . We denote
+the queue for the given ﬂow instance in the egress port as a
+variable s[va,vb]
+i .p. Note that the queue variable is synony-
+mous to the priority of the ﬂow within the egress port of
+the respective device. Additionally, we draw an equivalence
+between the egress port and its respective transmission link.
+It is important to note that the queue assigned to ﬂow in-
+stances of the same ﬂow may or may not change along the
+subsequent egress ports 2.
+Since the data size of a ﬂow is allowed to exceed the Eth-
+ernet MTU size in TSN, each ﬂow instance is associated
+with a set of frames, each with size less than or equal to
+the MTU size. Maintaining our notation from [8], we de-
+note the set of frames f [va,vb]
+i,j of a ﬂow instance s[va,vb]
+i by
+F [va,vb]
+i . Additionally, the ﬁrst and last frame of the set,
+ordered by the schedule oﬀset on the link, are expressed
+asF [va,vb]
+i with f [va,vb]
+i,1 and last(F [va,vb]
+i ), respectively. A
+frame f [va,vb]
+i,j ∈F [va,vb]
+i is deﬁned by the tuple
+⟨f [va,vb]
+i,j .φ,f [va,vb]
+i,j .T,f [va,vb]
+i,j .L⟩,
+where f [va,vb]
+i,j .φ∈ [0,f [va,vb]
+i,j .T ] is the oﬀset in macroticks
+of the frame on link [ va,v b], f [va,vb]
+i,j .T = ⌈ si.T
+[va,vb].mt⌉ is
+the period of the ﬂow scaled to the link macrotick, and
+f [va,vb]
+i,j .L = ⌈ Li×[va,vb].s
+[va,vb].mt ⌉ is the transmission duration of
+the frame also scaled to the link macrotick [8].
+4. SCHEDULING CONSTRAINTS
+In order compute a schedule for the timed gates of the
+scheduled queues we deﬁne scheduling constraints for the
+frame oﬀset variables (φ) and the ﬂow instance queue vari-
+ables (p), such that the correct temporal behaviour on the
+scheduled communication is guaranteed. We diﬀerentiate
+between basic constraints for deterministic Ethernet (Sec-
+tion 4.1) and 802.1Qbv speciﬁc constraints (Section 4.2) for-
+malising the speciﬁc behaviour of time sensitive ﬂows.
+4.1 Basic Deterministic Ethernet Constraints
+In [33], a standard TTEthernet model is used where peri-
+odic ﬂows are limited to one single frame. In [8], the model is
+enhanced allowing combined scheduling of preemptive tasks
+and network ﬂows in a TTEthernet network. The frame
+description and model from [8], where tasks are modelled
+as sets of frames, ﬁts well into the multi-frame ﬂow model
+2Diﬀerent queue assignment along multi-hop routes can oc-
+cur by means of e.g. VLAN re-tagging.
+185
+
+
+===== PAGE 4 =====
+[vx,va]
+[vy,va] [va,vb]
+va
+(a) Interleaving ﬂows in egress queue.
+[vx,va]
+[vy,va] [va,vb]
+va (b) Isolation of ﬂows in diﬀerent queues.
+[vx,va]
+[vy,va] [va,vb]
+va (c) Isolation of ﬂow arrival.
+Figure 2: Flow interleaving and isolation within an egress port of a 802.1Qbv switch.
+that we discuss here. Hence, in this section we brieﬂy reit-
+erate the most important constraints from [8], adapted and
+changed to ﬁt our model, and refer the reader to [8, 33] for
+a more complete and detailed list of scheduling constraints
+for deterministic Ethernet.
+Frame Constraint. The frame oﬀset of any frame sched-
+uled in the network has to be greater than or equal to 0. Ad-
+ditionally, the entire transmission window (oﬀset plus frame
+duration) has to ﬁt within the frame period. Hence, we have
+the condition adapted from [8]
+∀si∈S ,∀[va,v b]∈si,∀f [va,vb]
+i,j ∈F [va,vb]
+i :
+(
+f [va,vb]
+i,j .φ≥ 0
+)
+∧
+(
+f [va,vb]
+i,j .φ≤f [va,vb]
+i,j .T−f [va,vb]
+i,j .L
+)
+.
+Link Constraint. No two frames that are routed
+through the same physical link in the network can overlap
+in the time domain. The constraint adapted from [8] is as
+follows
+∀[va,v b]∈L,∀F [va,vb]
+i ,F [va,vb]
+j ,i̸=j
+∀f [va,vb]
+i,k ∈F [va,vb]
+i ,∀f [va,vb]
+j,l ∈F [va,vb]
+j ,
+∀α∈ [0,hp j
+i/si.T− 1],∀β∈ [0,hp j
+i/sj.T− 1] :
+(
+f [va,vb]
+i,k .φ +α×f [va,vb]
+i,k .T≥
+f [va,vb]
+j,l .φ +β×f [va,vb]
+j,l .T +f [va,vb]
+j,l .L
+)
+∨ (1)
+(
+f [va,vb]
+j,l .φ +β×f [va,vb]
+j,l .T≥
+f [va,vb]
+i,k .φ +α×f [va,vb]
+i,k .T +f [va,vb]
+i,k .L
+)
+,
+wherehpj
+i =lcm(si.T,s j.T ) is the hyperperiod of si andsj.
+Flow Transmission Constraint. The propagation of
+frames of a ﬂow must follow the sequential order along
+the routed path of the ﬂow. The network precision, de-
+noted with δ, represents the worst-case diﬀerence between
+the local clocks of any two synchronized (e.g. via the IEEE
+802.1AS [20] time-synchronization protocol) devices. Please
+note that in the TTEthernet synchronization protocol [35]
+the synchronization frames typically have the highest pri-
+ority and introduce a shuﬄing delay to the critical frames.
+The IEEE 802.1AS protocol also requires synchronization
+frames that travel on the same physical links as the critical
+frames but they can have a lower priority than the critical
+traﬃc and hence do not introduce a shuﬄing delay.
+∀si∈S ,∀[va,v x], [vx,v b]∈si,
+∀f [va,vx]
+i,j ∈F [va,vx]
+i ,∀f [vx,vb]
+i,j ∈F [vx,vb]
+i :
+f [vx,vb]
+i,j .φ× [vx,v b].mt− [va,v x].d−δ≥ (2)
+(f [va,vx]
+i,j .φ +f [va,vx]
+i,j .L)× [va,v x].mt.
+The constraint imposes that a frame can only be scheduled
+on a subsequent link [vx,v b] after the complete reception on
+the previous link [ va,v x], including the propagation delay
+of the respective link ([ va,v x].d). Note that, as opposed
+to [8], the constraint is set to individual frames rather than
+the complete ﬂow instance, to allow initiating forwarding as
+soon as the ﬁrst frame is fully received without requiring to
+buﬀer the entire ﬂow.
+End-to-End Constraint. The maximum end-to-end la-
+tency constraint speciﬁes that the diﬀerence between the ar-
+rival and sending time of a ﬂow has to be less than or equal
+to the speciﬁed maximum. We denote the sending link of
+ﬂow si with src(si) and the last link before the receiving
+node with dest(si).
+∀si∈S :src(si).mt×f src(si)
+i,1 .φ +si.e2e≥ (3)
+dest(si).mt× (last(F dest(si)
+i ).φ +last(F dest(si)
+i ).L).
+4.2 802.1Qbv Constraints
+In TTEthernet a static schedule is provided per device
+port and deﬁnes the temporal behaviour of all frames of the
+scheduled ﬂows whereas in 802.1Qbv the schedule is spec-
+iﬁed for an egress queue, aﬀecting multiple ﬂows with the
+same traﬃc class (priority). Moreover, a TTEthernet stream
+is deﬁned as one frame of at most MTU size whereas ﬂow
+in 802.1Qbv can be composed of multiple frames. Hence,
+802.1Qbv-speciﬁc constraints need to be speciﬁed. We elab-
+orate on these constraints using a simpliﬁed example, de-
+picted in Figure 2, where two ﬂows arriving at a switch from
+diﬀerent sources are forwarded via the same egress port, dis-
+cussing both the case when they are queued in the same
+scheduled queue and the case when they use diﬀerent sched-
+uled queues.
+Egress Interleaving. In the ﬁrst scenario, depicted in
+Figure 2(a), the two ﬂows arrive from diﬀerent links at
+roughly the same time. Regardless of the synchronization
+protocol used, there will always be an amount of synchro-
+nization error between individual devices that may lead to
+alternating arrival order of frames during runtime. There-
+fore, the order in which the individual frames are placed in
+the scheduled queue at runtime is non-deterministic. It is
+important to note that the schedule controls the timing of
+the events on the egress port, not the order of frames in the
+queue. If the timed gate of the respective queue is opened
+ﬁrst for the time interval needed to transmit 2 frames and
+some time later for 3 frames, as depicted in the example,
+any combination of the respective frames of both ﬂows may
+occur on the egress port. Hence, the timely behaviour of the
+two ﬂows may oscillate each periodic instance accumulating
+jitter for the overall end-to-end transmission. In order to
+guarantee that the given end-to-end latency is always ful-
+ﬁlled, the worst-case delay introduced on each egress port
+186
+
+
+===== PAGE 5 =====
+along the ﬂow path must be considered in the end-to-end
+latency constraint for the ﬂow. However, the worst-case jit-
+ter that accumulates with each hop along the route of the
+ﬂow is not desirable in hard real-time systems. Addition-
+ally, the non-determinism introduced by the interleaving of
+individual frames weakens the temporal isolation of ﬂows
+since a change in one ﬂow may aﬀect other ﬂows by adding
+interference delay and jitter.
+One solution to avoid this delay and jitter is hence to
+introduce conditions on the computed schedule preventing
+ﬂows from interleaving, thus guaranteeing the isolation of
+ﬂows (or frames) in the transmitting queues. In other words,
+the constraints must either enforce a deterministic order of
+the ﬂows in queues or place ﬂows in diﬀerent queues such
+that each frame is dispatched deterministically according to
+the schedule of the associated timed gate. In this case, the
+scheduler either enforces two ﬂows arriving during interfer-
+ing intervals to be placed in diﬀerent queues (Figure 2(b)),
+or else allow them to be placed in the same queue but ensure
+that the intended order and transmission time for all frames
+of the ﬂows are preserved (Figure 2(c)).
+We ﬁrst assume that the two considered ﬂows arriving at
+the same device will be queued in the same egress queue
+and later relax this assumption and formulate the complete
+802.1Qbv isolation constraint for high-criticality ﬂows en-
+abling deterministic behaviour in the time domain.
+Lets[va,vb]
+i ands[va,vb]
+j be, respectively, the ﬂow instances
+of si∈S and sj∈S scheduled on the outgoing link (and
+hence egress port) [ va,v b] of device va. We remind the
+reader the equivalence between link [va,v b] and the respec-
+tive egress port and its associated output queues. Flow si
+arrives at the device va from some device vx on link [vx,v a].
+Similarly, ﬂowsj arrives from another devicevy on incoming
+link [vy,v a]. If si andsj would arrive from the same device,
+constraint (1) would ensure that the frames of the ﬂows will
+not overlap in the time domain.
+Ideal scenario. Let’s assume a perfect network where no
+frame is lost or discarded and all ﬂows are sent constantly
+in full size by their sending nodes (i.e. constant payload
+size). In order to guarantee the desired output schedule, it
+would suﬃce to ensure that any two individual frames of
+diﬀerent ﬂows are not scheduled to arrive at the same time,
+hence having a deterministic queuing order. The isolation
+condition in an ideal network is
+∀[va,v b]∈L,∀s[va,vb]
+i ,s [va,vb]
+j ∈S ,i̸=j,
+∀f [va,vb]
+i,k ∈F [va,vb]
+i ,∀f [va,vb]
+j,l ∈F [va,vb]
+j ,
+∀α∈ [0,hp j
+i/si.T− 1],∀β∈ [0,hp j
+i/sj.T− 1] :
+(
+f [vx,va]
+i,k .φ× [vx,v a].mt +α×si.T + [vx,v a].d +δ≤
+f
+[vy ,va]
+j,l .φ× [vy,v a].mt +β×sj.T + [vy,v a].d
+)
+∨
+(
+f
+[vy ,va]
+j,l .φ× [vy,v a].mt +β×sj.T + [vy,v a].d +δ≤
+f [vx,va]
+i,k .φ× [vx,v a].mt +α×si.T + [vx,v a].d
+)
+,
+where hpj
+i
+def
+= lcm(si.T,s j.T ) is, as before, the hyperperiod
+of ﬂows si and sj. The condition imposes that individual
+frames of any two ﬂows sharing a queue on device [ va,v b]
+are sent from their sending devices ([ vx,v a] and [vy,v a]) in
+such a way that they would arrive at the respective ports of
+the receiving device [va,v b] in a deterministic order.
+Flow Isolation Constraint. In reality, frame loss can
+occur, periodic payload size may vary over time, or frames
+might be dropped due to e.g. time-based ingress policing
+(e.g. IEEE 802.1Qci). In these cases there may be instances
+where a deterministic behaviour on the egress port cannot be
+guaranteed. Consider the case where two frames from two
+diﬀerent ﬂows are scheduled to arrive one after the other
+at the switch. Both are placed in the desired order in the
+same queue. At a later point in time, after both have been
+placed in the queue, the timed gate of the queue is opened
+for the ﬁrst frame (belonging to the ﬁrst ﬂow) and only at a
+later point in time for the second frame. If the ﬁrst frame is
+lost, the frame from the second ﬂow will take its place in the
+queue and be transmitted in the time slot originally reserved
+for the ﬁrst ﬂow leading to non-determinism and jitter. To
+guarantee isolation in a real network, we ﬁrst consider iso-
+lating ﬂows in the time domain assuming that they share
+the same egress queue. Hence, we formulate constraint (4)
+to enforce a correct ordering of ﬂows, i.e., if a frame of a
+given ﬂow has entered a queue, no frame of another ﬂow
+may arrive at the queue until all frames of the previous ﬂow
+have been fully dispatched. We remind the reader that the
+ﬁrst and last frame of a ﬂow, already ordered by their trans-
+mission time (i.e. scheduled oﬀset), are deﬁned by f [va,vb]
+i,1
+and last(F [va,vb]
+i ), respectively. Hence, we have
+∀[va,v b]∈L,∀s[va,vb]
+i ,s [va,vb]
+j ∈S ,i̸=j,
+∀α∈ [0,hp j
+i/si.T− 1],∀β∈ [0,hp j
+i/sj.T− 1] :
+(
+last(F [va,vb]
+i ).φ× [va,v b].mt +α×si.T +δ≤
+f
+[vy ,va]
+j,1 .φ× [vy,v a].mt +β×sj.T + [vy,v a].d
+)
+∨ (4)
+(
+last(F [va,vb]
+j ).φ× [va,v b].mt +α×sj.T +δ≤
+f [vx,va]
+i,1 .φ× [vx,v a].mt +β×si.T + [vx,v a].d
+)
+.
+The constraint ensures that once a ﬂow has arrived at the
+receiving device [va,v b], no other ﬂow can arrive at the same
+egress port until the ﬁrst ﬂow has been completely sent on
+the output port. Hence, individual frames of the ﬁrst arriv-
+ing ﬂow will not be interleaved with any frames of another
+ﬂow until the queue has been completely emptied.
+Frame Isolation Constraint. Despite being generally
+faster to solve since not all interleavings of individual frames
+have to be considered, the ﬂow isolation constraint is restric-
+tive and may decrease the search space for valid schedules.
+This can be easily proven by considering an input where a
+high-rate ﬂow has a period which is equal to or less than
+the combined transmission duration of all frames of a low-
+rate ﬂow. In this case, there is at least one period instance
+of the high rate ﬂow in which its frames have to interleave
+with the frames of the low-rate ﬂow. Given the previous
+isolation constraint, this would not be schedulable if there
+is only one queue per port, i.e., the ﬂows must be placed in
+diﬀerent queues. The counterexample can be generalized for
+an arbitrary number of queues.
+In order to avoid this, we relax the previous constraint to
+allow frames interleaving between ﬂows in a queue while in
+the same time guaranteeing that the order on the output
+port is deterministic. We do this by ensuring that there are
+only frames of one ﬂow in the queue at a time, i.e., frames
+from another ﬂow may only enter the queue if the already
+187
+
+
+===== PAGE 6 =====
+queued frames of the initial ﬂow have been serviced. We
+enforce that, if two frames are from diﬀerent ﬂows, one can
+only be scheduled to arrive at the shared queue if the other
+has already been dispatched from that queue. The frame
+isolation condition for schedulability is then
+∀[va,v b]∈L,∀s[va,vb]
+i ,s [va,vb]
+j ∈S ,i̸=j,
+∀f [va,vb]
+i,k ∈F [va,vb]
+i ,∀f [va,vb]
+j,l ∈F [va,vb]
+j ,
+∀α∈ [0,hp j
+i/si.T− 1],∀β∈ [0,hp j
+i/sj.T− 1] :
+(
+f [va,vb]
+j,l .φ× [va,v b].mt +α×sj.T +δ≤
+f [vx,va]
+i,k .φ× [vx,v a].mt +β×si.T + [vx,v a].d
+)
+∨ (5)
+(
+f [va,vb]
+i,k .φ× [va,v b].mt +β×si.T +δ≤
+f
+[vy ,va]
+j,l .φ× [vy,v a].mt +α×sj.T + [vy,v a].d
+)
+,
+For further use, we denote constraint (5) (or, if the ﬂow
+isolation method is used, constraint (4)) between two ﬂows
+as Φ(s[va,vb]
+i ,s [va,vb]
+j ).
+The above constraints ((4) and (5)) apply to frames in the
+same queue. However, as mentioned before, the scheduler
+may choose to place ﬂows in diﬀerent queues. Hence, the
+complete constraint for minimum jitter scheduling of high-
+criticality ﬂows is
+∀[va,v b]∈L,∀s[va,vb]
+i ,s [va,vb]
+j ∈S ,
+(
+Φ(s[va,vb]
+i ,s [va,vb]
+j )
+)
+∨
+(
+s[va,vb]
+i .p̸=s[va,vb]
+j .p
+)
+, (6)
+with s[va,vb]
+i .p≤ [va,v b].c and s[va,vb]
+j .p≤ [va,v b].c.
+5. 802.1QBV CONFIGURA TIONS
+The constraints presented above apply to them scheduled
+queues of a generic conﬁguration for critical traﬃc in fully
+scheduled 802.1Qbv networks, namely{Ve+s,⟨n,m,n−m⟩}.
+We now brieﬂy discuss the implications of a number of spe-
+cial conﬁgurations which include non-scheduled traﬃc and
+diﬀerent conﬁgurations of the scheduled and priority queues.
+Conﬁguration 1: {Ve+s,⟨1, 1, 0⟩} This case corresponds
+to devices in a network having one single queue per egress
+port operated as a scheduled queue. Therefore, condi-
+tion s[va,vb]
+i .p̸= s[va,vb]
+j .p is always false and, hence, high-
+criticality ﬂows are scheduled to be completely sequential in
+the time domain. This case amounts to serializing incoming
+traﬃc that converges on the same egress port reproducing a
+similar behaviour to bus systems like, e.g. TTP [23].
+Conﬁguration 2: {Ve+s,⟨n, 1,n− 1⟩} This is a general-
+ization of case 1, in which high-criticality ﬂows are assigned
+to the scheduled queue while non-scheduled ﬂows use one of
+the n− 1 available priority queues. The timely behaviour
+of non-scheduled ﬂows depends on queue priorities and ar-
+rival patterns [12, 14]. This conﬁguration corresponds to the
+special case presented in [31] compatible with the urgency-
+based scheduler approach proposed by the authors. This
+conﬁguration is suitable for legacy AVB systems that need
+to be augmented with a few additional high-criticality ﬂows
+requiring tighter temporal bounds.
+Conﬁguration 3: {Ve+s,⟨n,n, 0⟩} Contrary to case 2, all
+of the queues are designated as scheduled queues but we
+assign n− 1 queues for scheduled traﬃc, increasing the so-
+lution space for critical traﬃc. The remaining scheduled
+Priority 1
+Priority 2
+Priority 3
+BE-queue
+Combined
+ρ ρ 
+Figure 3: Example of generating BE-queue schedules.
+queue (BE-queue) is reserved for non-scheduled ﬂows, al-
+lowing two alternative approaches. On one hand, leaving
+its timed gate permanently open may result in interference
+to scheduled traﬃc due to occasional shuﬄing caused by
+ongoing transmissions originated just before the opening of
+scheduled queues. This can be included in the schedulability
+conditions by extending the duration of individual scheduled
+frames assuming that, in the worst case, one non-scheduled
+frame of MTU size can shuﬄe each critical frame. On the
+other hand, we propose to generate a schedule for the timed
+gate of the BE-queue by negating the combined schedule of
+all scheduled queues, i.e., for each gate open event of any
+other queue of the port, we create a gate close event for
+the BE-queue, and vice-versa. If need be, depending of de-
+vice implementation, gate closing events for the BE-queues
+may be decreased by the duration of MTU-sized frame in
+order to guarantee that no unscheduled frame may interfere
+scheduled frames. In Figure 3 we depict a simple example
+where the BE-queue schedule is generated from the com-
+bined schedules of all other queues but with the duration of
+an MTU BE frame (denoted by ρ in the ﬁgure) subtracted
+from the gate open events of the combined schedule.
+Note that, if all egress ports would have as many queues as
+there are incoming scheduled ﬂows, each could be assigned
+to its own dedicated queue. Hence, the problem is similar to
+scheduling TTEthernet, sinces[va,vb]
+i .p̸=s[va,vb]
+j .p is always
+true. In this case, each queue will behave as a “large” buﬀer,
+suﬃcient to accommodate all frames of each ﬂow instance,
+guaranteeing isolation between ﬂows through the schedule.
+Conﬁguration 4: {Ve+s,⟨n,m,n −m⟩} This scenario is
+suitable for high-criticality applications that feature both
+scheduled and non-scheduled traﬃc. The separation in
+scheduled and non-scheduled queues inﬂuences both the so-
+lution space for high-criticality ﬂows and worst-case latency
+of non-scheduled ﬂows for analysis methods like network cal-
+culus [12, 14] or the trajectory approach [4]. If m = 1, we
+have conﬁguration 2 in which non-scheduled traﬃc can be
+optimized at the expense of solution space for high-criticality
+traﬃc. On the other hand, if m =n− 1, the solution space
+for high-criticality traﬃc is maximized but the pessimism of
+the latency bounds of non-scheduled ﬂows may be higher. In
+Section 6.1 we discuss optimization criteria for the general
+case of this conﬁguration.
+Conﬁguration 5: {Ve+s,⟨n, 0,n⟩} This case mimics the
+behaviour of a standard AVB (IEEE 802.1BA) network in
+which ﬂows are serviced according to the priority assigned to
+their traﬃc class, which is equivalent to setting the timed-
+gates to be permanently opened. End-to-end properties of
+the non-scheduled ﬂows are subject to complementary anal-
+ysis methods like e.g. [6, 9, 12].
+188
+
+
+===== PAGE 7 =====
+6. 802.1QBV SCHEDULER
+Satisﬁability Modulo Theories (SMT) are designed to
+determine the satisﬁability of ﬁrst-order logical formulas
+against certain background theories like linear integer arith-
+metic (LA(Z)) or bit-vectors (BV) [3, 29]. On top of check-
+ing satisﬁability, SMT solvers also provide a model for the
+given satisﬁable context which represents one solution (out
+of a set of potentially multiple feasible solutions) for the
+given variables and constraints. NP-complete scheduling
+problems that exhibit combinatorial characteristic and have
+arithmetic constraints, like the one addressed in this pa-
+per, present a suitable use-case for constraint-satisfaction
+SMT solving in linear arithmetic [1, 11]. Using SMT for
+solving deterministic network scheduling problems was ﬁrst
+proposed by Steiner in [33].
+The aim of our scheduling algorithm for 802.1Qbv is to
+ﬁnd values for all individual frame oﬀsets and queue assign-
+ments in each respective egress port of ﬂows routed along
+the network such that the set of constraints are met. We
+deﬁne both frame oﬀsets and queue assignment indexes as
+integer variables to the SMT context and generate assertions
+(in linear arithmetic) that correspond to the constraints de-
+ﬁned in the previous sections. These frame oﬀsets represent
+the open (and close events) for the timed-gate of the re-
+spective queue assignment. The transformation from frame
+oﬀset and queue index into gate open close events is straight-
+forward, i.e., the oﬀset represents the gate open event for the
+given queue index and the gate close event is marked by the
+duration of the respective frame.
+When it comes to scheduling problems, the scalability
+of the SMT approach depends on several key factors, ana-
+lyzed in detail in [8]. However, an additional consideration,
+speciﬁc to 802.1Qbv, is the interleaving of diﬀerent ﬂows
+in a given queue. To improve scalability, especially when
+scheduling large networks, Steiner introduced an incremen-
+tal backtracking algorithm in [33] which we also use here in
+a modiﬁed form. Our approach attempts to schedule one
+ﬂow at a time by adding the ﬂow variables and constraints
+to the SMT context and trying to solve the problem with
+the added constraints. If a solution is found, the schedule for
+the ﬂow is ﬁxed by asserting the constant value provided by
+the SMT model into the context. This repeats until either
+the complete schedule is found (i.e. all ﬂows are scheduled)
+or an incremental step is deemed unfeasible by the solver. In
+the latter case, the constraints of the current ﬂow could not
+be satisﬁed with the previous context, so the SMT context
+is backtracked by removing the last scheduled ﬂow and rein-
+troducing it together with the unfeasible step in question.
+Backtracking repeats as long as the merged step results in an
+unfeasible problem. In the worst case, the algorithm sched-
+ules all ﬂows in one single step. However, in the average case,
+there is a signiﬁcant performance improvement that can be
+substantial especially when network utilization is low. In
+the case of infeasiblity, we save the state of the context with
+the highest number of solved ﬂows. Hence, even if the whole
+set of ﬂows was not schedulable, we still provide a partial
+solution for a subset of the given ﬂows.
+6.1 Optimization
+SMT solvers return the ﬁrst encountered valid solution,
+if one exists, for the given context out of the set of (po-
+tentially) multiple solutions. Scheduling solutions, like the
+one presented here, would beneﬁt even more if at the same
+time the provided solution is optimized with respect to cer-
+tain properties of the system. Optimization solvers, like
+Gurobi [16] or GLPK [15], are explicitly designed to solve
+constrained optimization problems and can be used to tackle
+optimized scheduling (cf. [8] for an example). In recent
+years, a new ﬁeld, called Optimization Modulo Theories
+(OMT), has emerged where certain SMT solvers are aug-
+mented with optimization capabilities [5, 24, 30]. A typical
+optimization objective used in industry is minimizing end-
+to-end latency of selected ﬂows. The minimization objec-
+tive is easily expressed based on constraint (3) from Sec-
+tion 4.2 and has been discussed in previous work (cf. [8]).
+Here, we focus on optimization opportunities arising from
+the speciﬁcs of IEEE 802.1Qbv.
+In the presented method we have seen how scheduled ﬂows
+are isolated either in the time domain or in diﬀerent queues
+in order to avoid interleaving. Scheduling along the time
+domain is constrained by the end-to-end latency require-
+ments and periods of the set of ﬂows, while the selection of
+queues is limited by the device capacity and the necessity to
+integrate other traﬃc classes. We have also seen that non-
+scheduled ﬂows, may beneﬁt from a larger number of pri-
+ority queues in the post-analysis step. On the other hand,
+a small number of scheduled queues available to scheduled
+ﬂows, reduces the solution space due to the rather stringent
+isolation constraints (cf. constraints (4) and (5)). Hence,
+any pre-assignment of queues to traﬃc classes introduces a
+trade-oﬀ between schedulability of high-criticality ﬂows and
+timeliness properties and ﬂexibility for non-scheduled traﬃc.
+The inclusion of optimization, however, opens up alter-
+native design space exploration mechanisms. Therefore, we
+propose an optimization objective to ﬁnd the minimal num-
+ber of queues required for scheduled traﬃc such that a valid
+solution is still feasible (i.e. schedulability is guaranteed).
+This number represents a design input for the assignment
+of queues to traﬃc classes on a per-device basis. The opti-
+mization condition is easy to express using our approach
+by having an additional variable ([ va,v b].κ) for each de-
+vice representing the number of required scheduled queues
+for high-criticality ﬂows for each egress port. Minimizing
+the number of used queues can be speciﬁed in diﬀerent
+ways depending on the OMT implementation and design
+goals. We deﬁne a global objective to minimize the ac-
+crued sum of the number of queues used per egress port, i.e.,
+minimize∑
+[va,vb]∈L[va,v b].κ. Complementary, OMT solvers
+like Z3 (v4.4.1) oﬀer the possibility to incorporate multi-
+ple diﬀerent objectives either optimized independently or
+combined using Pareto fronts or lexicographic priorities [5].
+Thus, additionally to the constraints deﬁned in Section 4.1
+and 802.1Qbv constraint (6), we add, ∀[va,v b]∈L
+minimize [ va,v b].κ
+subject to [ va,v b].κ≤ [va,v b].c,
+s[va,vb]
+i .p≤ [va,v b].κ,∀s[va,vb]
+i ∈S .
+In this case the solution given by the solver will not only
+return a valid schedule (in terms of frame oﬀsets and queue
+assignments per device) but also the minimum number of
+queues per device/port which are required to fulﬁl the com-
+puted schedule for high-criticality ﬂows. The remaining
+queues are then guaranteed to optimize the trade-oﬀ for
+non-scheduled ﬂows. As can be seen, there is no assump-
+tion on the value of [va,v b].c which represents the maximum
+189
+
+
+===== PAGE 8 =====
+10 ms
+1 sec
+1 min
+30 min
+4 h
+5(40) 15(144) 25(238)
+runtime
+Number of flows (Average number of frame instances)
+P1={10, 20}[ms]
+P2={10, 25, 50, 100}[ms]
+P3={5, 10, 200, 500}[ms]
+(a) Simple topology (3 ES, 1 SW)
+10 ms
+1 sec
+1 min
+30 min
+4 h
+5(52) 25(310) 50(641)
+runtime
+Number of flows (Average number of frame instances)
+P1={10, 20}[ms]
+P2={10, 25, 50, 100}[ms]
+P3={5, 10, 200, 500}[ms] (b) Medium topology (5 ES, 2 SW)
+10 ms
+1 sec
+1 min
+30 min
+4 h
+10(125) 50(738) 100(1490)
+runtime
+Number of flows (Average number of frame instances)
+P1={10, 20}[ms]
+P2={10, 25, 50, 100}[ms]
+P3={5, 10, 200, 500}[ms] (c) Complex topology (7 ES, 5 SW)
+Figure 4: Runtime with varying number of ﬂows and periods and diﬀerent network topologies.
+number of queues. We can therefore also reformulate the
+optimization problem in terms of design space exploration,
+i.e., given an unschedulable system, what is the minimum
+number of queues in each device/port that are necessary in
+order for the problem to become schedulable.
+7. EXPERIMENTS
+For the experimental evaluation we use the Z3 v4.4.1
+solver (64bit) [10] which features algorithms for solving lin-
+ear optimization objectives in addition to the normal SMT
+functionality [5]. We reproduced additionally several tests
+without optimization with Yices v2.4.2 (64bit) [13] using
+quantiﬁer-free linear integer arithmetic (LA(Z)) as the back-
+ground theory. Since we observe similar trends as in the Z3
+experiments and a comparison of SMT solvers is outside the
+scope of this paper, we omit the evaluation with Yices and
+concentrate on Z3. All experiments were run on a 64bit
+4-core3 3.40GHz Intel Core-i7 PC with 4GB memory.
+We analyze the scalability and schedulability aspects of
+our methods over a number of synthetic conﬁgurations on
+top of three predeﬁned network topologies ranging from 3
+end-systems connected to one switch to 7 end-systems con-
+nected through 5 switches (via 1Gbit/s links with a 1 µsec
+macrotick granularity). We set the time-out value for a run
+to 5 hours. As shown in [8], a higher utilization of the net-
+work links results in a more diﬃcult problem set for the
+SMT solver. Hence, we keep the size of the topologies rela-
+tive small in comparison to the number of ﬂows (and frames)
+in order to achieve a higher utilization on the links.
+In the ﬁrst set of experiments (Figure 4) we show the scal-
+ability of the frame isolation method (using the incremental
+backtracking implementation with step size of 1 ﬂow) when
+varying the problem set in 3 dimensions, namely in topol-
+ogy size, number of ﬂows and ﬂow periods (chosen randomly
+from 3 sets of predeﬁned periods). The conﬁguration we use
+for the scalability tests is {Ve+s,⟨8, 8, 0⟩}, the data size for
+each ﬂow is chosen uniformly between 2 and 8 MTU-sized
+frames, and the senders and receivers of the ﬂows are also
+chosen randomly from the set of end-systems in the network.
+The logarithmic y-axis shows the runtime and the x-axis
+the number of ﬂows and average number of frames scheduled.
+We observe that the period set has a signiﬁcant impact on
+the scalability, i.e. a more complex relationship between the
+periods of the ﬂows, and hence, a higher hyperperiod, results
+3Note that the current implementation of Z3 (and Yices)
+does not take advantage of the multi-core nature of the CPU
+as it runs in a single core.
+0
+20
+40
+60
+80
+100
+simple/P1/5simple/P2/5simple/P3/5simple/P1/15simple/P2/15simple/P3/15simple/P1/25simple/P2/25simple/P3/25medium/P1/5medium/P2/5medium/P3/5medium/P1/25medium/P2/25medium/P3/25medium/P1/50medium/P2/50medium/P3/50complex/P1/10complex/P2/10complex/P3/10complex/P1/50complex/P2/50complex/P3/50complex/P1/100complex/P2/100complex/P3/100
+M1 over M2 reduction [%]
+M1 runtime as percentage of M2 runtime
+Runtime reduction through M1
+Figure 5: Flow vs. frame isolation runtime comparison.
+in signiﬁcantly higher runtime of the algorithm. As is to be
+expected with NP-complete problems, the runtime increases
+exponentially with an increase in the number of ﬂows and
+frames that have to be scheduled. For e.g., using the com-
+plex topology (Figure 4(c)), we schedule 10 ﬂows with 118
+frame instances and period conﬁguration P 1 in under 1 sec
+while scheduling 100 ﬂows with 1394 frame instances and
+with period conﬁguration P 3 takes over 4 hours to solve.
+Figure 5 shows the reduction of the runtime when using
+the ﬂow isolation approach as a percentage of the runtime
+of the frame isolation method for each of the above inputs.
+Using the ﬂow isolation method, we expect on average a re-
+duced runtime of the scheduler at the expense of schedulabil-
+ity. We replicating the above experiments using the ﬂow iso-
+lation (constraint (4)) method, denoted by M1 in Figure 5,
+instead of the frame isolation constraint (constraint (5)), de-
+noted byM2. As can be seen, in these experiments the ﬂow
+isolation method is always faster than the frame isolation
+approach. In order to conﬁrm the trend, we have run addi-
+tional experiments with 381 randomly generated test cases
+varying between the 3 topologies and period sets presented
+above and with up to 1000 ﬂows and data sizes from 500
+up to 8000 bytes. Out of these, 17 reached the time-out
+of 5 hours with either M24 or with both methods and were
+deemed infeasible. For the remaining 336 inputs,M1 was on
+average 13% faster than M2 with a median of 8 .03%. The
+accumulated runtime of all successful runs was around 36 .7
+hours forM1 and just over 59 hours forM2, which amounts
+to a 30.73% improvement.
+4In some isolated cases, the frame isolation method timed
+out while the ﬂow isolation found a solution within minutes.
+190
+
+
+===== PAGE 9 =====
+100 ms
+1 sec
+10 sec
+1 min
+10 min
+runtime
+Flow isolation
+Frame isolation
+Optimized Flow isolation
+Optimized Frame isolation
+1
+2
+3
+T01T02T03T04T05T06T07T08T09T10T11T12T13T14T15T16T17T18T19T20
+queues
+Flow isolation Frame isolation
+Figure 6: Flow vs. frame isolation w/ and w/o optimization.
+Although in some cases the ﬂow isolation method reduces
+the execution time signiﬁcantly and may generally be prefer-
+able to the frame isolation approach (e.g. if schedulability
+is not likely to be an issue), it brings mostly moderate (lin-
+ear) improvements in runtime, especially in relation to the
+exponential nature of the problem.
+For the schedulability tests we generate random test cases
+with either simple, medium or complex topologies and with
+3, 4 or 5 ﬂows. The periods of the ﬂows are chosen randomly
+between two diﬀerent orders of magnitude, i.e., one set of pe-
+riods is{1ms, 2ms, 3ms, 5ms, 10ms}, while the others have
+values from the set {100µsec, 150µsec, 200µsec, 500µsec}.
+We scale the number of frames per ﬂow accordingly, i.e.
+ﬂows with periods over 1 ms have 10, 20, 40, 60 or 100
+frames per stream and high-rate ﬂows have either 1 or 2
+frames. Through this, we try to generate the scenario de-
+scribed in Section 4.2 in which frames of diﬀerent ﬂows
+have to interleave if scheduled in the same egress queue.
+In Figure 6 we show the runtime of the scheduler with and
+without optimization objectives using both ﬂow and frame
+isolation methods. As optimization objective we minimize
+the accrued sum of the number of queues used per egress
+port, therefore, aiming at the lowest overall number of re-
+quired queues per egress port. From all randomly generated
+test cases we selected 20 for which the minimum number of
+queues required was diﬀerent between the ﬂow and frame
+isolation methods. In order to obtain a global minimum, we
+schedule all ﬂows at once (i.e. without incremental steps)
+when using optimization. For the non-optimized runs we
+use the incremental version of our algorithm.
+As expected, the runtime is generally higher when opti-
+mizing regardless of whether we use ﬂow or frame isolation
+without optimization. In most cases, we observe that the
+frame isolation method requires one single queue per egress
+port for any device to satisfy the schedule while the ﬂow iso-
+lation method usually needs more than one queue in several
+ports/devices. This also means that conﬁgurations 1 or 2
+(deﬁned in Section 5) would not render a feasible solution
+using the ﬂow isolation method due to the limited amount of
+queues for high-criticality traﬃc ﬂows. For some use-cases
+(T 05, T 07, and T 09), the ﬂow isolation method requires 3
+queues for some devices, while the frame isolation remains
+at 1 queue per port for all devices. For other cases ( T 08,
+T 13, T 17 and T 20) the frame isolation method requires a
+minimum of 2 queues for some ports (still less than the ﬂow
+isolation for the respective use-cases).
+8. RELA TED WORK
+Scheduling critical traﬃc in deterministic networks using
+SMT solvers was ﬁrst proposed by Steiner in [33] and ex-
+tended in our previous work [7, 8] to include scheduling of
+preemptive tasks running on the end-system nodes. Schedul-
+ing traﬃc with diﬀerent criticality classes in TTEthernet
+while optimizing the end-to-end delay of rate-constrained
+ﬂows has been studied in [36].
+Scheduling problems, with and without optimization, for
+other proprietary technologies like PROFINET, FlexRay,
+and TTP have been address in [17, 18, 26, 37]. At the other
+end of the spectrum, methods for determining worst-case
+end-to-end latencies for non-scheduled networks (like AFDX
+or AVB) have been developed for example in [4, 12, 14].
+More recent approaches [9, 28] compute AVB worst case
+traversal times using network calculus. A new asynchronous
+traﬃc class is introduced in [31] within the context of TSN
+where the goal is to oﬀer compositional analysis capabili-
+ties by maintaining the traﬃc pattern between egress ports
+along the route. This approach considers standard AVB pri-
+ority behaviour since it assumes that the timed gates of the
+egress port queues are open at all times.
+Meyer et al. [25] study the interference of time-triggered
+communication on AVB traﬃc in TSN networks when syn-
+chronous traﬃc is added to the credit-based shaper deﬁned
+in 802.1Qbv. The simulation framework presented in the
+paper does not address the scheduling problem but assumes
+that an already existing TT schedule is created under the
+condition that TT frames circumvent the queues of the out-
+put port and are selected by the credit-based shaper with
+a higher priority than AVB streams. This approach as-
+sumes non-standard-compliant 802.1Qbv capabilities of de-
+vices combining a TTEthernet-like buﬀered approach with
+the scheduled queue architecture of TSN.
+Alderisi et al. [2] introduce a new type of traﬃc class with
+real-time guarantees called Scheduled Traﬃc (ST) which
+corresponds to our high-criticality class. Similar to [25], the
+paper considers a strict isolation of the mechanisms handling
+ST and AVB traﬃc to ensure non-interference. As opposed
+to our approach, both papers view the scheduled or time-
+triggered traﬃc class and the AVB class as fundamentally
+dichotomic and hence the two classes need separate (and dif-
+ferent) hardware mechanisms. Additionally, the authors do
+not address the underlying scheduling problem introduced
+by the timed gates of the priority queues.
+To the best of our knowledge, this is the ﬁrst study which
+discusses the functional parameters of 802.1Qbv devices im-
+pacting the capabilities to control the temporal behaviour of
+ﬂows and the resulting scheduling problem concerning the
+timed gate functionality of egress ports for high-criticality
+traﬃc.
+9. CONCLUSION
+In this work we addressed the scheduling problem aris-
+ing from the IEEE 802.1Qbv extension on multi-hop fully
+switched TSN networks, presenting several methods for com-
+puting static schedules via Satisﬁability Modulo Theories
+(SMT). We identiﬁed key functional parameters aﬀecting
+the behaviour of 802.1Qbv communication and, based on a
+generalized conﬁguration of these parameters for real-time
+traﬃc, we derived constraints for creating correct oﬄine
+schedules guaranteeing low and bounded jitter as well as de-
+terministic end-to-end latencies for critical communication
+191
+
+
+===== PAGE 10 =====
+ﬂows. Furthermore, we discussed several optimization direc-
+tions as well as concrete system conﬁgurations which open
+up a number of trade-oﬀs both at runtime as well as in the
+design phase of the system. To demonstrate our approach,
+we have performed an evaluation in terms of scalability and
+schedulability via synthetic network workloads and system
+conﬁgurations.
+References
+[1] Abraham, E., and Kremer, G.Satisﬁability checking: The-
+ory and applications. In Proc. SEFM (2016), vol. 9763 of
+LNCS, Springer International Publishing.
+[2] Alderisi, G., Patti, G., and Bello, L. L. Introducing
+support for scheduled traﬃc over IEEE audio video bridging
+networks. In Proc. ETFA (2013), IEEE Computer Society.
+[3] Barrett, C., Sebastiani, R., Seshia, S., and Tinelli, C.
+Satisﬁability modulo theories. In Handbook of Satisﬁability,
+vol. 185. IOS Press, 2009.
+[4] Bauer, H., Scharbarg, J., and Fraboul, C. Improving
+the worst-case delay analysis of an AFDX network using
+an optimized trajectory approach. Industrial Informatics,
+IEEE Transactions on 6 , 4 (2010).
+[5] Bjørner, N., Phan, A., and Fleckenstein, L. νz - an
+optimizing SMT solver. In Proc. TACAS (2015), Springer.
+[6] Bordoloi, U. D., Aminifar, A., Eles, P., and Peng, Z.
+Schedulability analysis of ethernet avb switches. In Proc.
+RTCSA (2014), IEEE Computer Society.
+[7] Craciunas, S. S., and Serna Oliver, R. SMT-based
+task- and network-level static schedule generation for time-
+triggered networked systems. In Proc. RTNS (2014), ACM.
+[8] Craciunas, S. S., and Serna Oliver, R. Combined task-
+and network-level scheduling for distributed time-triggered
+systems. Real-Time Systems 52, 2 (2016), 161–200.
+[9] De Azua, J. A. R., and Boyer, M. Complete modelling of
+AVB in network calculus framework. In Proc. RTNS (2014),
+ACM.
+[10] De Moura, L., and Bjørner, N. Z3: An eﬃcient SMT
+solver. In Proc. TACAS (2008), Springer-Verlag.
+[11] De Moura, L., and Bjørner, N. Satisﬁability modulo the-
+ories: Introduction and applications. Commun. ACM 54 , 9
+(2011), 69–77.
+[12] Diemer, J., Thiele, D., and Ernst, R. Formal worst-case
+timing analysis of ethernet topologies with strict-priority and
+AVB switching. In Proc. SIES (2012), IEEE Computer So-
+ciety.
+[13] Dutertre, B. Yices 2.2. In Proc. CAV (2014), vol. 8559 of
+Lecture Notes in Computer Science , Springer, pp. 737–744.
+[14] Frances, F., Fraboul, C., and Grieu, J. Using network
+calculus to optimize the AFDX network. In Proc. ERTS
+(2006).
+[15] GLPK. GNU Linear Programming Kit. http://www.gnu.
+org/software/glpk/. retrieved 20-Jul-2016.
+[16] Gurobi Optimization, I. Gurobi optimizer reference man-
+ual, version 6.0, 2014. retrieved 12-Jan-2015.
+[17] Hanzalek, Z., Burget, P., and ˇSucha, P. Proﬁnet IO IRT
+message scheduling. In Proc. ECRTS (2009), IEEE.
+[18] Huang, J., Blech, J. O., Raabe, A., Buckl, C., and
+Knoll, A. Static scheduling of a time-triggered network-on-
+chip based on SMT solving. In Proc. DATE (2012), IEEE.
+[19] Institute of Electrical and Electronics Engineers,
+Inc. 802.1Qbv - Enhancements for Scheduled Traﬃc. http:
+//www.ieee802.org/1/pages/802.1bv.html, 2016. Draft 3.1.
+[20] Institute of Electrical and Electronics Engineers,
+Inc. Time-Sensitive Networking Task Group. http://www.
+ieee802.org/1/pages/tsn.html, 2016. retrieved 06-Jul-2016.
+[21] Issuing Committee: As-2d2 Deterministic Ethernet
+And Unified Networking . SAE AS6802 Time-Triggered
+Ethernet. http://standards.sae.org/as6802/, 2011. retrieved
+20-May-2014.
+[22] Kopetz, H., and Bauer, G. The time-triggered architec-
+ture. Proceedings of the IEEE 91 , 1 (2003), 112–126.
+[23] Kopetz, H., and Grunsteidl, G. TTP - a time-triggered
+protocol for fault-tolerant real-time systems. In Proc. 23rd
+IEEE International Symposium on Fault-Tolerant Comput-
+ing (FTCS-23) (June 1993), pp. 524–533.
+[24] Li, Y., Albarghouthi, A., Kincaid, Z., Gurfinkel, A.,
+and Chechik, M. Symbolic optimization with SMT solvers.
+SIGPLAN Not. 49 , 1 (Jan. 2014).
+[25] Meyer, P., Steinbach, T., Korf, F., and Schmidt, T.
+Extending IEEE 802.1 AVB with time-triggered scheduling:
+A simulation study of the coexistence of synchronous and
+asynchronous traﬃc. In Proc. VNC (2013), IEEE Computer
+Society.
+[26] Pop, P., Eles, P., and Peng, Z. Schedulability-driven com-
+munication synthesis for time triggered embedded systems.
+Real-Time Syst. 26, 3 (2004), 297–325.
+[27] Prytz, G. A performance analysis of EtherCAT and
+PROFINET IRT. In Proc. ETFA (2008), IEEE Computer
+Society.
+[28] Queck, R. Analysis of ethernet AVB for automotive net-
+works using network calculus. In Proc. ICVES (2012), IEEE
+Computer Society.
+[29] Sebastiani, R. Lazy satisﬁability modulo theories. JSAT 3,
+3-4 (2007), 141–224.
+[30] Sebastiani, R., and Trentin, P. OptiMathSAT: A Tool
+for Optimization Modulo Theories. In Proc. CAV (2015),
+vol. 9206 of LNCS, Springer.
+[31] Specht, J., and Samii, S. Urgency-based scheduler for
+time-sensitive switched ethernet networks. In Proc. ECRTS
+(2016), IEEE Computer Society.
+[32] Steinbach, T., Lim, H.-T., Korf, F., Schmidt, T.,
+Herrscher, D., and Wolisz, A. Tomorrow’s in-car inter-
+connect? a competitive evaluation of IEEE 802.1 AVB and
+Time-Triggered Ethernet (AS6802). In Proc. VTC (2012),
+IEEE Computer Society.
+[33] Steiner, W. An evaluation of SMT-based schedule synthe-
+sis for time-triggered multi-hop networks. In Proc. RTSS
+(2010), IEEE Computer Society.
+[34] Steiner, W., Bauer, G., Hall, B., and Paulitsch, M.
+TTEthernet: Time-Triggered Ethernet. In Time-Triggered
+Communication, R. Obermaisser, Ed. CRC Press, Aug 2011.
+[35] Steiner, W., and Dutertre, B. The TTEthernet synchro-
+nisation protocols and their formal veriﬁcation. Int. J. Crit.
+Comput.-Based Syst. 4 , 3 (2013).
+[36] Tamas-Selicean, D., Pop, P., and Steiner, W. Synthesis
+of communication schedules for TTEthernet-based mixed-
+criticality systems. In Proc. CODES+ISSS (2012), ACM.
+[37] Zeng, H., Zheng, W., Di Natale, M., Ghosal, A.,
+Giusto, P., and Sangiovanni-Vincentelli, A. Schedul-
+ing the ﬂexray bus using optimization techniques. In Proc.
+DAC (2009), ACM.
+192

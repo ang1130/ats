@@ -1,0 +1,956 @@
+
+
+===== PAGE 1 =====
+Asynchronous Trafﬁc Shaping and Redundancy:
+Avoiding Unbounded Latencies in In-Car Networks
+Teresa L ¨ubeck 1, Philipp Meyer 1, Timo H ¨ackel 1, 2 , Franz Korf 1, and Thomas C. Schmidt 1
+1 Department of Computer Science, Hamburg University of Applied Sciences, Germany
+2 Faculty of Computer Science, Dresden University of Technology, Germany
+{teresa.luebeck, philipp.meyer, timo.haeckel, franz.korf, t.schmidt}@haw-hamburg.de
+Abstract—Time-Sensitive Networking enhances Ethernet-
+based In-V ehicle Networks (IVNs) with real-time capabilities.
+Different trafﬁc shaping algorithms have been proposed for
+time-critical communication, of which the Asynchronous Trafﬁc
+Shaper (ATS) is an upcoming candidate. However, recent re-
+search has shown that A TS can introduce unbounded latencies
+when shaping trafﬁc from non-FIFO systems. This impacts
+the applicability of A TS in IVNs, as these networks often use
+redundancy mechanisms, i.e. Frame Replication and Elimination
+for Reliability (FRER), that can cause non-FIFO behavior . In this
+paper, we approach the problem of accumulated delays from ATS
+by analyzing the scenarios that generate latency and by devising
+placement and conﬁguration methods for ATS schedulers to
+prevent this behavior . We evaluate our approach in a simulation
+environment and show how it prevents conditions of unbounded
+delays. In an IVN simulation case study, we demonstrate the
+occurrence of unbounded latencies in a realistic scenario and
+validate the effectiveness of our solutions in avoiding them.
+Index Terms—Asynchronous Trafﬁc Shaping, Frame Replica-
+tion and Elimination, In-V ehicle Networks, Simulation
+I. I NTRODUCTION
+Future In-V ehicle Networks (IVNs) will rely on a growing
+number of sensor data streams to support both control and
+infotainment functions. These networks must ensure high
+reliability, provide sufﬁcient bandwidth, and meet strict End-
+to-End (E2E) latency requirements. Consequently, IVNs are
+transitioning from heterogeneous bus topologies to ﬂat Eth-
+ernet backbones [1], [2]. Among the emerging technologies,
+Time Sensitive Networking (TSN) is a promising solution to
+meet the necessary real-time demands of future IVNs [1]–[4].
+The IEEE 802.1Q [5] collection of standards deﬁnes TSN
+ingress and egress control mechanisms for trafﬁc shaping,
+enabling guaranteed Quality of Service (QoS). Within TSN,
+the Asynchronous Trafﬁc Shaper (A TS) offers per-stream
+trafﬁc shaping based on a token bucket algorithm that performs
+well for sporadic trafﬁc [6], achieving lower E2E latencies
+than the widely used Credit Based Shaper (CBS) [7], [8],
+making it a promising candidate for trafﬁc shaping in IVNs.
+Furthermore, CBS is vulnerable to burst cascades [9], which
+can be prevented by per-stream and per-hop shaping with A TS.
+TSN modules are building blocks designed to interoperate;
+modules with similar purposes should, in principle, be inter-
+changeable. For instance, different trafﬁc shaping algorithms
+could theoretically be swapped without issue. However, this is
+not always the case: Thomas et al. demonstrate that combining
+A TS with the redundancy mechanism Frame Replication and
+Elimination for Reliability (FRER) can cause unbounded la-
+tencies [10]. Later, they prove that this issue extends to all non-
+FIFO networks [11], including star topologies. This limitation
+is particularly critical for future IVN topologies, which often
+adopt a ring backbone to leverage FRER for redundancy [4].
+The unbounded latencies caused by the interaction between
+A TS and FRER render A TS unsuitable for such networks.
+To address this challenge, a modiﬁcation to the A TS stan-
+dard has been proposed [11]. While there are currently no
+commercially available switches supporting A TS, a change of
+the standard would take time and hinder ongoing development
+posing signiﬁcant barriers to adoption. The combination of
+A TS and FRER needs an in-depth analysis, to reveal if critical
+cases can occur in speciﬁc IVN setups and how speciﬁc A TS
+conﬁgurations can prevent unbounded latencies.
+In this paper, we propose A TS conﬁgurations techniques
+for non-FIFO networks, enabling bounded latencies in sce-
+narios prone to unbounded delays. We reproduce the problem
+identiﬁed in [11] using simulation scenarios and demonstrate
+that careful placement of A TS schedulers and adjustment of
+parameters can restore bounded latencies. Furthermore, we
+apply our conﬁguration techniques in a realistic IVN setup
+from [4], where the introduction of A TS leads to unbounded
+latencies and our solutions prevent them.
+The remainder of this paper is structured as follows: Sec-
+tion II introduces A TS, FRER and related work. Section III
+outlines the problem arising from the combination of A TS and
+FRER. Section IV presents our A TS conﬁguration strategies,
+while Section V evaluates their impact through simulations.
+Section VI examines the proposed conﬁgurations in a realistic
+IVN scenario. Finally, Section VII concludes the paper with
+an outlook on future work.
+II. B ACKGROUND AND RELATED WORK
+Growing complexity and bandwidth demands of modern ve-
+hicles drive a transition from Controller Area Networks toward
+Ethernet-based networks [1], [2], [4], [12]. In these networks,
+TSN [5] enables deterministic latencies by integrating trafﬁc
+shaping that handles the coexistence of different trafﬁc classes.
+TSN has been explored in various automotive contexts,
+including its integration with software-deﬁned networking [12]
+and its role in anomaly detection [13]. The draft TSN auto-
+motive proﬁle (IEEE 802.1DG [14]) outlines how different
+modules can be applied in IVNs, including the combination
+979-8-3315-2437-1/25/$31.00 ©2025 IEEE
+2025 IEEE Vehicular Networking Conference (VNC) | 979-8-3315-2437-1/25/$31.00 ©2025 IEEE | DOI: 10.1109/VNC64509.2025.11054087
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 2 =====
+of trafﬁc shaping mechanisms. Most existing work on TSN
+in cars focuses on CBS and Time Aware Shaper (TAS) [1],
+[2], [12], while A TS – as a relatively new addition – remains
+largely unexplored in this domain. Similarly, research on
+FRER has primarily addressed industrial applications rather
+than automotive use cases.
+A. Asynchronous Trafﬁc Shaper (ATS)
+A TS was ﬁrst introduced as Urgency Based Shaper (UBS)
+in 2016 [15] and is now part of TSN [5]. A TS is a per-stream
+shaping mechanism, based on a token bucket. In contrast to
+CBS, scheduling takes place at ingress. The A TS algorithm
+calculates an eligibility time for every incoming frame —
+the earliest time it can be transmitted — using the amount
+of tokens in the bucket. The egress queue for A TS trafﬁc is
+ordered by eligibility time. Frames with a time earlier than or
+equal to the current time are eligible for transmission.
+One or multiple streams can be assigned to an A TS sched-
+uler. CommittedInformationRate ( cir) deﬁnes the recovery
+rate of the token count, and CommittedBurstSize ( cbs) the
+maximum amount of tokens in the bucket; the number of
+tokens on initialization of the algorithm is cbs.
+A TS schedulers are organized in scheduler groups , each
+group serving streams that arrive on the same port with the
+same priority. Thus, in contrast to other TSN shapers, A TS
+depends on ingress information. Each group has a shared Max-
+imumResidenceTime ( mrt) parameter that deﬁnes an upper
+limit for the eligibility time delta. When the scheduling of
+a frame violates the mrt, the frame is dropped. A shared state
+variable group eligibility time , ensures that the order of frames
+within the same group is preserved by the scheduling.
+Figure 1 illustrates the assignment of eligibility times for
+two streams in the same scheduler group, providing an exam-
+ple of the A TS algorithm. Each stream has an associated A TS
+scheduler, represented by the number of tokens in the black
+and red buckets. Note that the cir and cbs values are different
+between the two schedulers.
+First, a frame of the black stream arrives when there are
+enough tokens in the bucket. It is assigned its arrival time as
+eligibility time, and the required tokens are subtracted. Tokens
+then recover with rate cir. The second frame of the black
+stream arrives when there are not enough tokens available, so
+its eligibility time is set to the next time when enough tokens
+accumulate. The required tokens are subtracted at the time of
+eligibility. The assigned eligibility time for the third frame is
+further in the future than its arrival time + mrt, so the frame
+is dropped and no tokens are subtracted.
+When the ﬁrst frame of the red stream arrives, there are
+enough tokens in the bucket to serve it immediately, while
+the second frame of the red stream must wait. Scheduler
+groups are important when the fourth frame of the black stream
+arrives. On arrival of the fourth frame, there are enough tokens
+in the black bucket to serve it immediately, but the group
+eligibility time is the most recent eligibility time value set by
+a scheduler in the group. In this case, the eligibility time of
+the second frame of the red stream, which is in the future.
+1 2 3
+1 2 3
+1 2
+1
+4
+2
+4
+# tokens # tokens
+cbs
+cbs
+mrtmrt
+time
+arrival time
+eligibility time
+time
+Fig. 1: Assignment of frame eligibility times for two streams
+(black,
+red) scheduled by A TS in the same scheduler group.
+The eligibility time of the fourth frame of the black stream is
+therefore set to the group eligibility time. The second frame of
+the red stream and the fourth frame of the black stream have
+the same eligibility times, but the frame of the red stream
+arrived ﬁrst and will be transmitted ﬁrst.
+B. Frame Replication and Elimination (FRER)
+FRER (IEEE 802.1CB [16]) is a redundancy mechanism
+that enhances reliability by duplicating frames and transmitting
+them over multiple paths. This increases the likelihood that
+at least one copy reaches the destination. Streams can be
+replicated multiple times within a network and later converge
+at a merge point, where duplicates are eliminated.
+A tag is added to each frame that assigns a sequence
+number. A stream splitting function replicates the frames,
+keeping their sequence number. Duplicated frames are trans-
+mitted over different paths in the network, ensuring delivery
+even in the event of a path failure. At the receiving end, a
+recovery function eliminates redundant copies by discarding
+any duplicate frames with the same sequence number, ensuring
+that only one instance reaches the destination.
+FRER does not guarantee that the order of frames in a
+stream is preserved. Duplicate frames that take different paths
+can have different delays and failures on one path can lead
+to sporadic frame losses. As an example: The frame sequence
+1, 2, 3 is split and duplicates 1l, 2l, 3l are transmitted over a
+path with low delay, while duplicates 1h, 2h, 3h are transmitted
+over a path with high delay. Frames can arrive at the recovery
+function in the order 2l, 1h, 2h, 3l, 3h when frame 1l is lost, the
+frames are then reordered to 2, 1, 3 after the stream is merged.
+Furthermore, frames with different sequence numbers from
+different paths (e.g., a short and a long path) may arrive at
+the recovery function simultaneously. If none are dropped as
+duplicates, multiple frames are transmitted together in a burst.
+Repeated occurrences of such bursts can momentarily increase
+the transmission rate of the stream [16, Annex C.9].
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 3 =====
+C. Related Work
+Several studies compare A TS performance with other trafﬁc
+shaping mechanisms, such as CBS, TAS, or strict priority
+shaping [6]–[8], [17], demonstrating its effectiveness in both
+industrial and IVN scenarios. Some works evaluate combina-
+tions of trafﬁc shapers [6], [18]. In contrast, our work does
+not focus on the relative performance of A TS but rather on
+the feasibility of speciﬁc conﬁgurations. Our goal is to enable
+the use of A TS in realistic IVNs with redundancy, ensuring its
+applicability as a viable alternative to other trafﬁc shapers.
+The impact of A TS parameter conﬁguration is examined in
+multiple studies: Fang et al. [7] show that A TS performance
+depends on the choice of cir and cbs. If these values are set
+too low, A TS performs worse than CBS and strict priority
+scheduling, and increasing the parameter values improves the
+performance. Hu et al. [19] analyze the effect of cbs on
+E2E delay bounds, while Y oshimura et al. [17] demonstrate
+that reducing the mrt parameter lowers latency and jitter but
+increases frame loss rates. In comparison, we derive a set of
+conﬁguration guidelines to set A TS parameters and evaluate
+on a binary criterion whether the setting introduces critical
+delays. Additionally, we compare the inﬂuences of cir and
+cbs on the shaping of bursts.
+In contrast to other shaping mechanisms, like CBS, where
+the percentage of allocated bandwidth is capped and class
+measurement intervals are provided, there is little guidance
+on the parametrization of A TS in the standard [5]. As a con-
+sequence, difﬁculties in setting up A TS have been reported [6].
+We observe that many studies use A TS parameter values that
+are higher than the rate and burst of the shaped streams,
+with the mrt parameter often not set at all or assigned a
+value larger than the simulation time. This suggests that A TS
+parameters are frequently conﬁgured such that it works , which
+may explain why [11] were the ﬁrst to report unbounded
+latencies in non-FIFO networks using A TS. We introduce the
+problem of unbounded latencies in detail in Section III.
+In this work, we derive and apply conﬁgurations to restore
+bounded latencies. we examine synthetic networks where A TS
+parameters are predeﬁned and a realistic IVN where some A TS
+parameters are found empirically.
+III. U NBOUNDED LATENCIES IN ATS N ETWORKS
+Network calculus results show that A TS does not increase
+the worst-case latencies of a stream when it is placed behind
+a FIFO system [20]. This does not hold for non-FIFO
+systems [11]. The proof for this is based on an adversarial
+frame sequence, which leads to unbounded latencies if it is
+shaped with A TS. We design three synthetic networks that
+reproduce the adversarial frame sequence, where the non-FIFO
+behavior is introduced by FRER and parallel paths. We use
+these networks to evaluate our workaround solutions.
+Figure 2 sketches the problematic frame sequence. Three
+streams, denoted as blue, red, and orange, each produce two
+frames with a spacing of I in one period. One period has length
+T < 3I when the frames are produced at the sources. Within
+the network, the second frame of the blue stream overtakes the
+1 21 2 1 2 1
+1 2 1 21 2
+1 2 1 2 1 2
+1
+1
+T
+I
+3I
+production 
+time
+arrival 
+time
+eligibility 
+time
+Fig. 2: Adversarial frame generation sequence of three con-
+current streams (
+blue, red, and orange) redrawn from [11].
+switch 2switch 1switch 0
+split merge ATS
+loss of every 
+second frame
+>
+>
+>
+> >
+>
+>
+> >
+>
+> >
+switch L1 switch L2
+switch S1
+(a) Using FRER for redundancy with packet loss.
+switch 2switch 1
+switch L1
+switch 0
+ATS
+delay every 
+second frame
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+switch L2
+switch S1
+(b) Using parallel paths in a ring with cross-trafﬁc.
+switch 1
+ATS
+delay every 
+second frame
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+> >
+>
+>
+>
+>
+switch L0
+switch S0
+switch L1 switch L2
+switch S1
+switch 2
+(c) Using parallel paths in a tree with cross trafﬁc.
+Fig. 3: Switched network with adversarial frame generation
+(see Fig 2). End systems are not shown. Each dotted line (
+blue,
+red, orange, and green) represents a different stream.
+ﬁrst frame of the red stream, thus breaking the FIFO property.
+At the end, there are three A TS schedulers belonging to the
+same scheduler group, each associated with one stream. All
+A TS schedulers are conﬁgured such that the interval between
+two outgoing frames of a stream is at least I. Due to the second
+blue frame arriving before the ﬁrst red frame the red frame
+cannot be send before both blue frames are sent, as they are
+in the same scheduler group. This increases the period length
+after shaping to 3I. Repeating the period leads, over time, to
+inﬁnitely increasing latencies [11].
+We create three networks where the adversarial frame gen-
+eration is possible (see Fig. 3). Preconditions for the non-FIFO
+behavior are fulﬁlled by two realistic causes: In network A (see
+Fig. 3a) FRER with packet loss causes the second blue frame
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 4 =====
+switch 2switch 1
+scheduler 1
+group 1
+stream red
+ingress
+ATS schedulers
+(optional)
+egress
+scheduler 2
+group 1
+stream orange
+scheduler 4
+group 2
+stream blue2
+port 1
+port 2
+port 3
+scheduler 1
+group 1
+stream red
+ingress ATS schedulers egress
+scheduler 2
+group 1
+stream orange
+scheduler 3
+group 1
+stream blue
+port 1 port 3
+stream recovery 
+functions
+scheduler 3
+group 1
+stream blue1
+blue1 , blue2
+=> blue
+Fig. 4: Switch 1 and 2 of the example networks (see Fig. 3). Dashed elements appear only in network A, while solid-line
+elements are present in networks A, B, and C. Colors (
+blue, red, and orange) represent the streams.
+to overtake the ﬁrst red frame. In network B (see Fig. 3b)
+and C (see Fig. 3c) the blue stream is delayed by cross-trafﬁc
+(green stream). In all networks, the streams share the same
+priority and no trafﬁc shapers exist besides A TS on switch 2.
+The three streams enter network A in their order of pro-
+duction (see Fig. 2). The blue stream is split on switch 0 and
+is transmitted over both a long path (top) and a short path
+(bottom). Every second frame on the short path is lost. The
+red and orange streams are only transmitted over the long
+path. The paths join on switch 1, where the blue stream is
+merged. Then all remaining frames enter switch 2 in the arrival
+sequence (see Fig. 2), where A TS causes latencies to increase.
+Network B has the same topology as network A, but without
+FRER. Instead, the order of frames changes because the blue
+stream always takes the short path, where every second frame
+is delayed by a green cross-trafﬁc stream that shares part of
+the path. The red and orange streams take the long path. When
+the three streams re-join at switch 1 from different ports, the
+adversarial frame arrival sequence occurs (see Fig. 2). Again,
+switch 2 shapes the streams with A TS, causing the delays.
+Network C shows that the unbounded latencies can occur
+in networks with a generic star topology. The blue, red,
+and orange stream originate from different sources. The blue
+stream takes a short path where every second frame is delayed
+by cross-trafﬁc, while the red and orange streams take a long
+path. All three streams meet for the ﬁrst time on switch 1,
+where the frames arrive in the adversarial arrival sequence
+(see Fig. 2) and are then transmitted to the A TS switch.
+IV. C ONFIGURING ATS FOR BOUNDED LATENCIES
+We identify two general approaches to mitigate the de-
+scribed problem of unbounded latencies in non-FIFO net-
+works. First, the design of the network, i.e., the placement of
+A TS schedulers. Second, the impact of speciﬁc A TS conﬁgu-
+ration parameters. Sections IV-A to D describe our solutions.
+A. Use ATS on All Hops
+This approach targets the network design by placing A TS
+schedulers on every switch to break the adversarial arrival
+sequence. In the adversarial frame generation, only one switch
+uses A TS (switch 2). An improved setup re-shapes a stream
+with A TS on every hop. Speciﬁcally, using A TS on switch
+1 restores the original order of the frames in cases where
+the non-FIFO property is introduced by parallel paths. This
+approach requires additional resources, as all switches need to
+have trafﬁc shaping conﬁgurations.
+Figure 4 illustrates the setup of the last two switches in
+the synthetic networks. First, the case where the non-FIFO
+property is due to parallel paths (networks B and C). The
+frames of the three streams arrive on switch 1 in the critical
+order, but the blue stream enters on port 2, while the red and
+orange streams enter on port 1. Without A TS on switch 1, all
+frames enter switch 2 in this order, where they are shaped
+by A TS schedulers in the same scheduler group, thus gaining
+unbounded latencies. But when A TS is also used on switch
+1, the streams are shaped there such that their frames arrive
+on switch 2 in their order of production. While the second
+frame of the blue stream is assigned an eligibility time in the
+future, the ﬁrst frame of the red stream is assigned its arrival
+time as eligibility time. This is due to their schedulers being
+in different scheduler groups on switch 1.
+This approach does not work when FRER is used. The
+reason is the sequence of A TS schedulers and FRER recovery
+functions. Figure 4 shows the setup for network A. The blue
+stream enters switch 1 from two different ports and each
+instance is shaped by its own A TS scheduler. Afterwards,
+the recovery function drops duplicated frames and causes
+the critical frame order which is transmitted to switch 2.
+Moving the A TS schedulers behind the merging does not make
+sense, due to the deﬁnition of scheduler groups. Scheduler
+groups require frames to arrive at the same port, but a merged
+stream has frames arriving on different ports such that a clear
+assignment to a group is impossible.
+B. Increase cir or cbs
+This following approach is based on increasing the values
+of cir and cbs on switch 2 such that the length of the period
+after shaping is not higher than the length of the period in
+which frames are produced. The values of cir and cbs are
+set in the adversarial frame generation such that the interval
+between two frames of a stream is at least I after shaping.
+An increase of cir or cbs reduces the length of this interval,
+consequently reducing the length of the period after shaping.
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 5 =====
+# tokens
+time
+cbs
+cir
+1
+1 2
+arrival time
+eligibility time
+2
+(a) cir and cbs set tightly.
+# tokens
+1
+1
+eligibility time
+2
+2
+cir
+cbs
+time
+arrival time (b) V alue of cir is doubled.
+# tokens
+1 2
+1 2
+eligibility time
+cir
+cbs
+time
+arrival time (c) V alue of cbs is doubled.
+Fig. 5: Qualitative evolution of A TS tokens and eligibility times with two consecutively arriving frames of one stream.
+The minimum increase of the values can be found by
+analysis or empirically, and this might not be easy. But in
+combination with solution IV -A, the increase of the cir and
+cbs values must only be done for the A TS after the FRER
+merging. FRER can cause a temporary doubled bandwidth
+[16, Annex C.9]. So, doubling the values of cir and cbs on the
+next A TS scheduler after merging, can ensure that the shaping
+does not add delays. It is also possible to increase either cir
+or cbs. Doubling only cir takes the perspective that the data
+rate doubles due to FRER. While only increasing cbs takes
+the perspective that FRER causes bursts. To ensure that the
+burst is not shaped, the value of cbs must be set to burst size
++ original value of cbs .
+The A TS scheduler behaves differently when only cir or
+only cbs is increased. Figure 5 shows the number of tokens,
+arrival and eligibility times for a burst of two frames arriving
+at an A TS scheduler. Figure 5a shows the behavior when cir
+is set to the data rate of the stream and cbs to one frame size.
+The second frame is delayed due to the shaping. Doubling
+the value of cir alone also results in a delay of the second
+frame, but the delay is only half as large as before (5b). This
+is enough to prevent the increase of the period after shaping
+the adversarial frame generation. Doubling the value of cbs
+allows both frames to be transmitted without delay (5c).
+Increasing any of the parameters cir or cbs, changes the
+shape of the stream on all following hops.
+C. Do not Place ATS Behind FRER Merge Points
+For some networks the merging only takes place on the
+last switch before the destination. In these cases it can be
+useful to omit the A TS shaping after merging, if necessary
+replacing it with a different shaping mechanism. This solution
+works well in combination with FRER, because the merger is
+a known location where frames can change their order. When
+the unbounded latencies are introduced by other means, as
+in networks B and C, it is more difﬁcult to locate the A TS
+schedulers that can potentially cause unbounded latencies and
+selectively remove them. Solution IV -A should be used in
+combination with this solution to prevent unbounded latencies
+that are not caused by FRER.
+D. Utilize the mrt Parameter
+Setting the mrt parameter for the A TS scheduler on switch
+2, can prevent unbounded latencies by dropping frames. When
+a frames eligibility time is set later than its arrival time plus
+mrt, the frame is dropped. This means for the adversarial
+frame generation, that the continuous increase of latencies due
+to shaping is interrupted when the assigned eligibility times
+of the frames are too far in the future. At this point frames
+are dropped in regular intervals, such that the period length
+after shaping is not larger than the period length at production.
+There is no decrease in latencies, because the arrival of frames
+stays as is. This solution only shifts the problem of unbounded
+latencies towards a problem of frame loss. IVNs have a high
+demand for reliability, making this solution not applicable.
+V. E VALUATION : AVOIDING ADVERSARIAL FRAMES
+To verify that the proposed conﬁgurations restore bounded
+latencies for the adversarial frame generation, we simulate the
+three networks from Figure 3. The simulation is in OMNeT++
+6.0.2 [21] and uses the INET framework [22]. Simulation
+enables the implementation and evaluation of our proposed
+solutions without needing to wait for hardware components
+implementing A TS that are not yet commercially available.
+A. Baseline Network Setups
+There are three networks that are simulated. All lines in the
+networks have a bandwidth of 100 Mbit/s.
+Network A (Figure 3a) produces the blue, red, and orange
+stream on a device connected to switch 0. The long path has
+four switches and the short path one switch. The listener device
+is after switch 2. Network B (Figure 3b) has two talker devices
+connected to switch 0; one produces the red and orange stream,
+the other the blue and green stream. The listener device for the
+green stream is connected to switch S1. The length of the paths
+and the listener device for the blue, red, and orange stream are
+the same as in network A. Network C (Figure 3c) has a long
+path with ﬁve switches and a short path with two switches. The
+red and orange stream are produced on a device connected to
+switch L0, the blue and green stream are produced to a device
+connected to switch S0. The listener device for the blue, red
+and orange stream is after switch 2, while the destination of
+the green stream is connected to switch S1.
+We simulate the adversarial frame generation with the
+following stream and A TS conﬁgurations: The frame size for
+the blue, red, and orange stream is 125 B (1000 bit) including
+overhead and Inter-Frame Gap (IFG). The interval between
+two frames of a stream that are produced within a period
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 6 =====
+(a) (b) (c) (d) (e) (f) (g) (h) (i) (j)
+simulation case
+10 4
+10 3
+E2E latency [s]
+blue stream
+red stream
+orange stream
+Fig. 6: End-to-end latencies of the three streams of the
+adversarial trafﬁc generation and proposed A TS conﬁgurations
+in network A (and network C in case (e)).
+is I = 50 µs, a period repeats after T = 140 µs. The offset
+between the ﬁrst frame of the blue stream and the ﬁrst frame
+of the red stream is 20 µs, while the offset between the second
+frame of the red stream and the ﬁrst frame of the orange
+stream is 10 µs. The cross-trafﬁc frames in networks B and
+C have a size of 500 B and are produced every 140 µs. A TS
+parameters are the same for all three streams: cir = 20 Mbit/s
+(which is higher than the average bandwidth of the streams),
+and cbs = 125 B (one frame size), mrt is set inﬁnitely high to
+prevent A TS from dropping frames and therefore limiting the
+delay. The period length after shaping is 3I = 150 µs.
+We simulate three baseline cases and the four proposed A TS
+conﬁgurations for each of the three networks for 10 s each.
+Behaviors observed in the simulations do not change with
+longer simulation times, as the trafﬁc generation and behavior
+of the modules is static.
+B. Evaluation of Baseline Cases
+We ﬁrst simulate three baseline cases, to show that the
+problem occurs in our networks due to A TS on switch 2. These
+are: case ( a) without A TS on any switch, case ( b) with A TS
+only on switch 2, and case ( c) with A TS only on switch 2,
+but the schedulers are in different groups.
+Figure 6 presents the E2E latencies of the blue, red and
+orange streams for the baseline cases in network A. For
+scaling, we limit the depiction to the ﬁrst 1000 latency values,
+corresponding to the ﬁrst 7 ms of the simulation time. V alues
+that are not depicted continue the trend of the values shown.
+Baseline case ( a) simulates the networks without A TS on
+any switch. The E2E latencies are bounded for all streams. All
+frames of the red and orange streams always have the same
+latency. Frames of the blue stream have two distinct latencies:
+In network A it depends on whether the frame takes the long
+or short path, in networks B and C it depends on whether the
+frame is delayed by the cross trafﬁc.
+A TS is used on switch 2 in baseline case ( b) . The E2E
+latencies of all three streams increase over time.
+Baseline case ( c) uses A TS on switch 2, but the A TS sched-
+ulers for the three streams are in different scheduler groups.
+This is the solution proposed in [11]. The E2E latencies for
+all three streams are bounded. In contrast to case ( a) , there
+is only one value of the latency for the blue stream, because
+the frames with a shorter delay (short path or not delayed
+by cross-trafﬁc), are then delayed by the shaping. While this
+solution prevents unbounded latencies, its adoption requires a
+change of the standard. Furthermore, scheduler groups limit
+the number of FIFO queues needed to implement A TS [15].
+C. Evaluation of ATS Conﬁgurations
+Next, the four proposed solutions from Section IV are
+implemented in the synthetic networks. Figure 6 presents the
+ﬁrst 1000 E2E latencies for the blue, red, and orange stream
+in the following cases: ( d) - ( e) solution IV -A in networks
+A and C, and ( f) - ( h) solution IV -B, ( i) solution IV -C, and
+(j) solution IV -D in network A.
+1) Use ATS on all hops: A TS is used on all switches in the
+networks in cases ( d) and ( e) . The A TS parameters are the
+same for all switches and streams: cir = 20 Mbit /s, cbs =
+125 B, and mrt is set to inﬁnity. Network A, where FRER
+is used, is presented in case ( d) . The latencies of the three
+streams are unbounded, because the critical order of frames is
+caused by the merging. In networks B and C (case ( e) ), on
+the other hand, the latencies are bounded for all three streams,
+because the shaping on switch 1 puts the frames back to their
+original order of production. Contrasting results in network A
+against those of network B and C shows that this solution is
+not always able to prevent unbounded latencies.
+2) Increase cir or cbs: Cases ( f) to ( h) use A TS only
+on switch 2. In case ( f) both cir and cbs are doubled, case
+(g) doubles only cir, and case ( h) doubles only cbs.
+Case ( f) , which doubles both cir and cbs, results in E2E
+latencies similar to case ( a) , where no A TS is used. The reason
+is that the parameters are set such that the shaping does not
+delay any frame. In case ( g) only the value of cir is doubled.
+The minimum E2E latency of the blue stream increases in
+comparison to case ( f) , because the shaping adds a small
+delay to the frames that take the short path, or a not delayed
+by cross trafﬁc, respectively. Frames of the red stream that
+need to wait for the delayed frame of the blue stream are
+also delayed. Case ( h) doubles only the value of cbs. This
+conﬁguration does not delay any frames due to the shaping.
+Increasing the parameter values increases the bandwidth and
+burst size of the affected stream(s) on the subsequent hops,
+which needs to be considered in the network conﬁgurations.
+3) Do not place ATS behind FRER merging: A TS is used on
+all switches except switch 2 in case ( i) . The A TS parameters
+are the same as for solution IV -A. This case is only relevant in
+network A, because networks B and C do not use FRER. The
+results in Figure 6 show that the latencies of all three streams
+are bounded for this case, because there is no A TS after the
+frames are put into the critical order. This solution is only
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 7 =====
+0 5 10 15 20 25
+simulation time [ms]
+10 4
+10 3
+max latency [s]
+mrt = 0s
+mrt = 1us
+mrt = 10us
+mrt = 100us
+mrt = 1ms
+Fig. 7: End-to-end latencies of the blue stream in network A
+with different values for mrt.
+applicable when the merging points in the network are placed
+such that they separate the network into distinct before- and
+after-merging parts. An alternative trafﬁc shaping mechanism
+might be implemented after merging.
+4) Utilize the mrt Parameter: The mrt is set for all three
+A TS schedulers on switch 2 in case ( j) . When mrt is set,
+there is an upper bound to the E2E latencies of the streams,
+because the delay added by the shaping is limited. Figure 6
+shows the results with mrt = 1 ms , the presented simulation
+time is 14 ms due to frame loss. The E2E latencies for all three
+streams increase until they reach the value of mrt+network
+delay and then stay the same.
+Figure 7 illustrates this increase of E2E latencies in detail.
+Initially, the assigned eligibility times on switch 2 are within
+the range set by mrt; the E2E latencies increase during this
+phase. When the assigned eligibility times exceed the range
+set by mrt, frames are dropped and E2E latencies stay stable.
+For low values of mrt, in the presented results 0 s or 1 µ s,
+frames of all streams are dropped due to timing imprecisions.
+Otherwise, only frames of the blue stream are dropped.
+While setting mrt does prevent unbounded latencies, it
+enforces this by dropping frames, decreasing the reliability.
+VI. C ASE STUDY: I N-V EHICLE NETWORK
+We simulate a realistic IVN with redundancy to show how
+the addition of A TS after the stream recovery function leads to
+unbounded latencies. We previously published this network as
+open source with a detailed explanation in [4], and we make
+our A TS conﬁgurations publicly available 1.
+The original network does not use A TS but relies on CBS to
+shape the streams. Already when we replace CBS with A TS
+on the switches without adjusting any other conﬁgurations,
+the problem of unbounded E2E latencies occurs. We apply
+our combined solutions IV -A & IV -C, and solution IV -B to
+regain the bounded latencies of the original network.
+A. Baseline Network Setup
+The realistic IVN shown in Figure 8 has a zonal topology
+that employs a redundant ring-backbone with four switches.
+Redundant streams are split on the ﬁrst switch they enter and
+1https://github.com/CoRE-RG/NIDSDatasetCreation
+switchFrontRight
+lidarFrontRight
+masterClock
+lidarFrontLeft
+zonalController
+FrontLeft
+switchRearRight
+zonalController
+RearRight
+lidarRearRight
+zonalController
+RearLeft
+lidarRearLeft
+switchFrontLeft
+switchRearLeft
+cameraRear
+ cameraFront
+adas
+infotainment
+connectivityGateway
+zonalController
+FrontRight
+Fig. 8: Future IVN canditate using a zonal topology with an
+Ethernet ring backbone and FRER for redundancy.
+traverse the backbone both clockwise and counterclockwise,
+the stream recovery function is on the last switch they traverse.
+Two video and four LIDAR streams are shaped with A TS on
+their path to the Advanced Driver Assistance System (ADAS)
+located in the rear right zone. Video sources in the front right
+and rear left zone produce frames with a jitter of 70 µs and a
+bandwidth of 176 Mbit/s. LIDAR streams originate in all four
+zones with strict intervals and a bandwidth of 104 Mbit/s.
+All links have a bandwidth of 1 Gbit/s with cross trafﬁc
+on higher and lower priorities. Furthermore, a Time Division
+Multiple Access (TDMA) scheme on highest priority impacts
+the timing of all other priorities. Unbounded latencies due
+to the combination of FRER and A TS can occur with at
+least three shaped streams [11]. Our IVN has six shaped
+streams with the same destination, different path lengths, and
+heterogeneous trafﬁc patterns due to jitter and cross trafﬁc.
+Rather than modifying these streams to create problematic
+trafﬁc patterns, we rely on chance to produce them.
+We conﬁgure A TS for the six streams on every switch and
+their source devices. The cbs is set to their respective frame
+sizes. The cir for the video streams is set to 200 Mbit/s to
+meet E2E latency requirements. For LIDAR streams we set the
+cir to their bandwidths. The A TS schedulers on the switches
+have a mrt set to 50 µs, it is large enough that there are no
+frame drops due to the A TS scheduling. We found these values
+in a preliminary parameter study where the values for cir and
+mrt were increased until the latency requirements were met.
+B. Evaluation of ATS Conﬁgurations
+Our simulation case study covers three cases: ( 1) A baseline
+that replaces CBS with A TS after the FRER merger, (2) applies
+solutions IV -A and IV -C for the network conﬁguration, and
+(3) applies solution IV -B on A TS schedulers after the merger
+We simulate each case for 10 s simulation time. Table I
+summarizes the minimum and maximum E2E latencies of the
+six relevant streams. The minima do not change between the
+cases. The differences between streams of the same type are
+due to their path lengths. LIDAR 4 has the shortest path, with
+only one switch, and LIDAR 1 has the longest minimum path
+with three switches regardless of the direction.
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+===== PAGE 8 =====
+TABLE I: Min and max end-to-end latencies of video and
+LIDAR streams in the IVN for different A TS conﬁgurations.
+Stream Baseline Solution IV -A & IV -C Solution IV -B
+min max min max min max
+video 1 34 µs 8 .36 ms 34 µs 227 µs 34 µs 213 µs
+video 2 34 µs 8 .4 ms 34 µs 256 µs 34 µs 221 µs
+LIDAR 1 76 µs 8 .3 ms 76 µs 120 µs 71 µs 124 µs
+LIDAR 2 46 µs 8 .28 ms 44 µs 110 µs 44 µs 103 µs
+LIDAR 3 44 µs 8 .29 ms 44 µs 104 µs 44 µs 106 µs
+LIDAR 4 28 µs 8 .25 ms 28 µs 51 µs 28 µs 69 µs
+For the baseline, we replace CBS with A TS schedulers after
+the stream recovery function. The per stream values for cir and
+cbs are the same in all switches. The mrt is set to inﬁnity on
+all schedulers to ensure that the maximum E2E latency is not
+restricted by frame drops. After one second, the maximum
+E2E latencies have increased to 8.4 ms for the video streams
+and 8.3 ms for the LIDAR streams. Longer simulations lead
+to higher, unbounded, maximum E2E latencies.
+Applying solution IV -A & IV -C placing all A TS schedulers
+before the stream recovery function reduces the E2E latencies.
+The maximum E2E delay is 256 µs for the video streams and
+120 µs for the LIDAR streams.
+Alternatively, we apply solution IV -B by doubling the cbs
+of the LIDAR streams. Experiments showed that the cir of
+the video streams is large enough to not cause unbounded
+latencies, therefore, only the cbs of the LIDAR streams is
+increased. We achieve a maximum E2E latency of 221 µs for
+video streams, and 124 µs for the LIDAR streams.
+With this, we demonstrate that our solutions help regaining
+bounded latencies in the IVN case study. In the cases that
+apply our solution, longer simulations do not increase the
+maximum latencies, indicating upper bounds.
+VII. C ONCLUSION AND OUTLOOK
+TSN trafﬁc shaping mechanisms, such as A TS, are promis-
+ing solutions for ensuring deterministic latencies in IVNs.
+However, related work has shown that A TS can introduce
+unbounded latencies in networks with redundancy [10] or non-
+FIFO behavior [11]. In this work, we proposed conﬁguration
+guidelines for A TS that avoid these unbounded delays.
+Using A TS in every switch in a network can prevent frames
+from entering A TS schedulers in a critical order. However,
+when using FRER, this is insufﬁcient. The A TS parameters on
+switches after the stream recovery function must be adjusted
+to prevent shaping from introducing additional latencies. Our
+results indicate that it may be advisable not to use A TS
+after the stream recovery function. Furthermore, while the
+mrt parameter can limit delays introduced by A TS, using it
+to reduce delays only shifts the problem toward frame loss.
+We evaluated our solutions in a realistic IVN scenario,
+where replacing CBS with A TS led to unbounded latencies.
+Again, by ensuring A TS was not applied after the recovery
+function and increasing the cbs parameter for A TS schedulers
+after the recovery function, we successfully prevented these
+latencies. This provides a workaround for the interaction of
+A TS and FRER in IVNs.
+This work gives rise to three future research directions.
+First, our solutions may be explored in other domains, such
+as industrial networks. Second, a formal validation of the
+methods will increase the conﬁdence in their effectiveness for
+real-world deployments. Finally, a performance comparison of
+our A TS conﬁgurations for the IVN case study with other
+trafﬁc shaping mechanisms could optimize conﬁgurations for
+IVN scenarios.
+REFERENCES
+[1] J. Walrand et al. , “An Architecture for In-V ehicle Networks,” IEEE
+Trans. V eh. Technol., vol. 70, pp. 6335–6342, Jul. 2021.
+[2] Y . Peng et al. , “A Survey on In-V ehicle Time-Sensitive Networking,”
+IEEE Internet of Things Journal , vol. 10, pp. 14 375–14 396, 2023.
+[3] T. H ¨ackel et al., “Software-Deﬁned Networks Supporting Time-Sensitive
+In-V ehicular Communication,” in IEEE 89th VTC2019-Spring , Apr.
+2019, pp. 1–5.
+[4] P . Meyer et al. , “A Framework for the Systematic Assessment of
+Anomaly Detectors in Time-Sensitive Automotive Networks,” in IEEE
+15th VNC , May 2024, pp. 57–64.
+[5] IEEE, “Standard for Local and Metropolitan Area Networks–Bridges
+and Bridged Networks,” IEEE, Std 802.1Q-2022, Dec. 2022.
+[6] A. Nasrallah et al., “Performance Comparison of IEEE 802.1 TSN Time
+Aware Shaper (TAS) and Asynchronous Trafﬁc Shaper (A TS),” IEEE
+Access, vol. 7, pp. 44 165–44 181, 2019.
+[7] B. Fang et al. , “Simulative Assessments of Credit-Based Shaping and
+Asynchronous Trafﬁc Shaping in Time-Sensitive Networking,” in 12th
+ICAIT, 2020, pp. 111–118.
+[8] Z. Zhou et al. , “Simulating TSN Trafﬁc Scheduling and Shaping For
+Future Automotive Ethernet,” Journal of Communications and Networks ,
+vol. 23, pp. 53–62, 2021.
+[9] L. Maile et al. , “On the V alidity of Credit-Based Shaper Delay Guaran-
+tees in Decentralized Reservation Protocols,” in ACM 31st RTNS , 2023,
+pp. 108–118.
+[10] L. Thomas et al. , “Worst-Case Delay Bounds in Time-Sensitive Net-
+works With Packet Replication and Elimination,” IEEE/ACM Trans.
+Netw., vol. 30, pp. 2701–2715, 2022.
+[11] L. Thomas and J.-Y . Le Boudec, “Network-calculus service curves of
+the interleaved regulator,” Performance Evaluation, vol. 166, 2024.
+[12] T. H ¨ackel et al. , “Secure Time-Sensitive Software-Deﬁned Networking
+in V ehicles,” IEEE Trans. V eh. Technol., pp. 1–16, 2022.
+[13] P . Meyer et al., “Network Anomaly Detection in Cars: A Case for Time-
+Sensitive Stream Filtering and Policing,” Computer Networks , vol. 255,
+Dec. 2024.
+[14] IEEE, “Draft Standard for Local and Metropolitan Area Networks -
+Time-Sensitive Networking Proﬁle for Automotive In-V ehicle Ethernet
+Communications,” IEEE, Std. 802.1DG, Draft 1.4, Dec. 2021.
+[15] J. Specht and S. Samii, “Urgency-Based Scheduler for Time-Sensitive
+Switched Ethernet Networks,” in 28th ECRTS , Jul. 2016, pp. 75–85.
+[16] IEEE, “Standard for Local and metropolitan area networks – Frame
+Replication and Elimination for Reliability,” IEEE, Std. 802.1CB-2017,
+Jul. 2017.
+[17] A. Y oshimura and Y . Ito, “QoS evaluation of A TS in IEEE 802.1
+TSN on in-vehicle Ethernet by comparing with CBS and TAS,” IEICE
+Communications Express , 2024.
+[18] E. Mohammadpour et al. , “Latency and Backlog Bounds in Time-
+Sensitive Networking with Credit Based Shapers and Asynchronous
+Trafﬁc Shaping,” in IEEE 30th ITC , Sep. 2018.
+[19] H. Hu et al. , “The Delay Bound Analysis Based on Network Calculus
+for Asynchronous Trafﬁc Shaping under Parameter Inconsistency,” in
+IEEE 20th ICCT , Oct. 2020.
+[20] J.-Y . Le Boudec, “A Theory of Trafﬁc Regulators for Deterministic Net-
+works With Application to Interleaved Regulators,” IEEE/ACM Trans.
+Netw., vol. 26, pp. 2721–2733, Dec. 2018.
+[21] OpenSim Ltd., “OMNeT++.” [Online]. Available: https://omnetpp.org/
+[22] ——, “INET Framework.” [Online]. Available: https://inet.omnetpp.org/
+Authorized licensed use limited to: Dalian University of Technology. Downloaded on July 11,2026 at 08:07:02 UTC from IEEE Xplore.  Restrictions apply. 

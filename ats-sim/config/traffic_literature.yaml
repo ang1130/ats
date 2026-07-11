@@ -1,0 +1,147 @@
+# 基于文献的 ATS/TSN 仿真参数配置
+#
+# 目的：替代早期手调 traffic.yaml，作为后续正式 preliminary 实验的参数来源。
+# 主要依据：
+# - Yoshimura & Ito, "A Study on Optimal Ethernet-based Industrial Networks Construction
+#   Using Asynchronous Traffic Shaping in IEEE 802.1TSN and Downhill Simplex Method", ICOIN 2025
+# - Li Lin et al., "工业5G-TSN融合网络的异构流量整形器设计", 2025
+# - Craciunas et al., "Scheduling Real-Time Communication in IEEE 802.1Qbv TSN", RTNS 2016
+#
+# 注意：
+# 1. 本文件用于“文献依据配置”，不一定直接替换当前调试配置 traffic.yaml。
+# 2. 现有 Python 原型代码当前只支持 CIR/CBS 的令牌桶核心，MRT 先作为固定参数记录。
+# 3. 正式实验前需要编写适配脚本，将这里的多类流量映射到现有 TT/ET/BE 生成器。
+
+metadata:
+  name: literature-based-industrial-ats-profile
+  version: 0.1
+  status: preliminary-config
+  description: "Parameters derived from industrial TSN/ATS literature; not yet calibrated."
+
+# 链路参数
+# Yoshimura & Ito 使用 100BASE-TX；当前 Python 原型可先采用该值，后续也可做 1Gbps 对照。
+link:
+  bandwidth: 100.0e6          # 100BASE-TX, 100 Mbps
+  propagation_delay: 5.0e-6   # 5 us, 单跳简化值
+
+# ATS 参数可行域与默认值
+# 标准/文献命名：CIR / CBS / MRT
+# 代码层命名：r_default 等价 CIR, b_default 等价 CBS
+ats:
+  # CIR = Committed Information Rate
+  cir_min: 1.0e6
+  cir_max: 100.0e6
+
+  # CBS = Committed Burst Size
+  cbs_min: 1.0e3
+  cbs_max: 1.0e6
+
+  # MRT = Max Residence Time
+  # 当前阶段固定，不在线调整。取值需后续根据实验调校。
+  mrt_fixed: 1.0e-3           # 1 ms, 初始固定值；后续可按 350us/600us 约束细化
+
+  # 兼容现有代码字段：Static-Low，按低谷负载保守配置
+  r_default: 8.0e6            # CIR low baseline
+  b_default: 20.0e3           # CBS low baseline
+
+  max_queue_packets: 1000
+
+# 业务时延要求
+# Yoshimura & Ito 中严格要求为 350us / 600us；当前 Python proof-of-concept 可先配置多组。
+deadline_profiles:
+  strict_from_yoshimura:
+    high_priority_control: 350.0e-6
+    medium_priority: 600.0e-6
+  relaxed_prototype:
+    D_max: 10.0e-3            # 10ms，用于早期 Python PoC
+    epsilon: 0.01
+
+# 默认选择：为了兼容现有代码，保留 deadline.D_max 字段。
+deadline:
+  D_max: 10.0e-3
+  epsilon: 0.01
+
+# Yoshimura & Ito 2025 表 I 中的文献流量模板
+literature_flows:
+  # 高优先级控制流：500us, 150B, priority 7, requirement 350us
+  high_priority_control:
+    source_devices: [HA0, HA1, HA2, HB0, HB1, HB2]
+    interval: 500.0e-6
+    size_bytes: 150
+    priority: 7
+    deadline: 350.0e-6
+    description: "High-priority industrial control traffic from Yoshimura & Ito Table I."
+
+  # 中优先级流：1000us, 750B, priority 6, requirement 600us
+  medium_priority:
+    source_devices: [SA0, SA1, SA2]
+    interval: 1000.0e-6
+    size_bytes: 750
+    priority: 6
+    deadline: 600.0e-6
+    description: "Medium-priority traffic from Yoshimura & Ito Table I."
+
+  # 背景/无时延要求流：280-520us, 500B, priority 5, no requirement
+  background_no_requirement:
+    source_devices: [SB0, SB1, SB2, SB3, SB4, SB5]
+    interval_min: 280.0e-6
+    interval_max: 520.0e-6
+    size_bytes: 500
+    priority: 5
+    deadline: null
+    description: "Background traffic with no explicit delay requirement from Yoshimura & Ito Table I."
+
+# 映射到当前 Python 原型的 TT/ET/BE 结构
+# 注意：现有代码尚未读取本文件；后续需要写 adapter。
+prototype_mapping:
+  tt_flows_from_literature:
+    # 先取部分高优先级控制流映射为 TT；若全部映射，负载较高，需配套调整 CIR。
+    - { id: 0, period: 500.0e-6, size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+    - { id: 1, period: 500.0e-6, size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+    - { id: 2, period: 500.0e-6, size_bytes: 150, priority: 7, deadline: 350.0e-6 }
+
+  medium_flows_as_tt_or_et:
+    - { id: 10, period: 1000.0e-6, size_bytes: 750, priority: 6, deadline: 600.0e-6 }
+    - { id: 11, period: 1000.0e-6, size_bytes: 750, priority: 6, deadline: 600.0e-6 }
+    - { id: 12, period: 1000.0e-6, size_bytes: 750, priority: 6, deadline: 600.0e-6 }
+
+  be_background:
+    interval_min: 280.0e-6
+    interval_max: 520.0e-6
+    size_bytes: 500
+    priority: 5
+    deadline: null
+
+# 后续实验基线建议
+baselines:
+  static_low:
+    cir: 8.0e6
+    cbs: 20.0e3
+    mrt: 1.0e-3
+    description: "Low-load static configuration; expected to save resources but fail under high load."
+
+  static_high:
+    cir: 30.0e6
+    cbs: 100.0e3
+    mrt: 1.0e-3
+    description: "High-load static configuration; expected to satisfy latency but over-reserve resources."
+
+  offline_optimized_search_space:
+    cir_candidates: [4.0e6, 6.0e6, 8.0e6, 10.0e6, 12.0e6, 15.0e6, 20.0e6, 30.0e6, 50.0e6]
+    cbs_candidates: [10.0e3, 20.0e3, 50.0e3, 100.0e3, 200.0e3]
+    mrt_candidates: [350.0e-6, 600.0e-6, 1.0e-3, 5.0e-3]
+    description: "Grid-search approximation of Yoshimura & Ito's Downhill Simplex baseline. Stage1 fixes MRT and searches CIR/CBS only."
+
+# 动态场景草案：后续 adapter 将生成 scenario_literature.yaml
+scenario_template:
+  duration: 120.0
+  events:
+    - time: 30.0
+      type: step
+      description: "Add medium/high-priority flows to emulate load increase."
+    - time: 60.0
+      type: burst
+      description: "Inject ET burst to emulate alarm/emergency traffic."
+    - time: 90.0
+      type: step_down
+      description: "Remove added flows and return to low-load state."

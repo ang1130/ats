@@ -1,0 +1,2217 @@
+
+
+===== PAGE 1 =====
+ 
+Contents lists available at ScienceDirect
+Journal of Systems Architecture
+journal homepage: www.elsevier.com/locate/sysarc  
+Efficient adaptive bandwidth allocation for deadline-aware online admission 
+control in centralized time-sensitive networking
+Sifan Yu
+ , Feng He, Anlan Xie, Luxi Zhao ∗
+School of Electronic and Information Engineering, Beihang University, China
+A R T I C L E  I N F O
+Keywords:
+Time-sensitive networking (TSN)
+Bandwidth allocation
+Admission control
+Real-time performance
+Network calculus
+ A B S T R A C T
+With the growing demand for dynamic real-time applications, online admission control for time-critical 
+event-triggered (ET) traffic in Time-Sensitive Networking (TSN) has become a critical challenge. The main 
+issue lies in dynamically allocating bandwidth with real-time guarantees in response to traffic changes. This 
+also demands rapid responsiveness, scalability, and efficient resource utilization for online applicability. To 
+address this challenge, we propose an online admission control method for ET traffic based on a combined 
+asynchronous traffic shaper (ATS, IEEE 802.1Qcr) and credit-based shaper (CBS, IEEE 802.1Qav) architecture. 
+This method provides a flexible framework for real-time guaranteed online admission control, supporting 
+dynamic bandwidth allocation and reclamation at runtime without requiring global reconfiguration, thus 
+improving scalability. Within this framework, we further integrate a novel strategy based on network calculus 
+(NC) theory for efficient and high-utilization bandwidth reallocation. On the one hand, the strategy focuses on 
+adaptively balancing residual bandwidth with deadline awareness to prevent bottleneck egress ports, thereby 
+improving admission capacity. On the other hand, it employs a non-trivial analytical result to reduce the search 
+space, accelerating the solving process. Experimental results from both large-scale synthetic and realistic test 
+cases show that, compared to the state-of-the-art, our method achieves an average 44% increase in admitted 
+flows and an average 92% reduction in admission time. Additionally, it postpones the occurrence of bottleneck 
+egress ports and the first rejection of admission requests, thereby enhancing adaptability.
+1. Introduction
+Industry 4.0 has accelerated the development of time-sensitive ap-
+plications [1], including industrial automation, smart grids, and au-
+tomotive systems. These applications impose strict requirements for 
+deterministic network transmissions, driving significant advancements 
+in Time-Sensitive Networking (TSN). Moreover, with the increasing 
+demand for dynamic applications like plug-and-play devices, there is 
+an evolution from static to dynamic scenarios.  For example, when a 
+trailer is coupled with a vehicle at runtime [2], the advanced driver 
+assistance system (ADAS) must handle new time-critical traffic gener-
+ated by trailer-mounted components, such as rear view cameras and 
+park distance control sensors. In response to these dynamic require-
+ments, TSN integrates centralized network configuration (CNC) and 
+centralized user configuration (CUC) through IEEE 802.1 Qcc [3]. 
+However, despite IEEE 802.1 Qcc standardizing interfaces and pro-
+tocols, achieving admission control for dynamic time-critical traffic 
+remains an area with numerous open questions. The core challenge 
+lies in implementing configurations that ensure real-time performance 
+for dynamically changing traffic. At the same time, the solution must 
+∗ Corresponding author.
+E-mail addresses: yusifan@buaa.edu.cn (S. Yu), robinleo@buaa.edu.cn (F. He), xieanlan2000@buaa.edu.cn (A. Xie), zhaoluxi@buaa.edu.cn (L. Zhao).
+meet the demands of online scenarios, including rapid response, strong 
+scalability, and high resource utilization.
+In TSN, time-critical traffic is generally divided into time-triggered 
+(TT) and event-triggered (ET) traffic. TT traffic is typically periodic 
+and scheduled by the time-aware shaper (TAS) [4], and its strict 
+deadline and jitter requirements are ensured by configuring the Gate 
+Control List (GCL). In contrast, ET traffic can be either periodic or 
+sporadic, and is characterized by a minimum frame interval. It is 
+scheduled using mechanisms such as strict priority (SP) [5], credit-
+based shaper (CBS) [6], and asynchronous traffic shaper (ATS) [7]. 
+The configuration of ET traffic primarily focuses on the setting of key 
+parameters (e.g., bandwidth allocation), which provides greater flexi-
+bility. However, ensuring that the worst-case delay of ET flows does not 
+exceed their deadlines requires dedicated timing analysis [8–10], which 
+is generally computationally expensive [11,12] and poses significant 
+challenges for online admission control. To overcome this challenge, 
+this paper focuses on the admission control of time-critical ET traffic, 
+aiming to ensure real-time guarantees while meeting the demands of 
+online scenarios. 
+https://doi.org/10.1016/j.sysarc.2025.103539
+Received 18 April 2025; Received in revised form 24 June 2025; Accepted 2 August 2025
+Journal of Systems Architecture 168 (2025) 103539 
+Available online 14 August 2025 
+1383-7621/© 2025 Elsevier B.V. All rights are reserved, including those for text and data mining, AI training, and similar technologies. 
+
+
+===== PAGE 2 =====
+S. Yu et al.
+Conventional heuristic configuration methods for time-critical ET 
+traffic rely on timing analysis results as feedback for iterative optimiza-
+tion. However, the high computational cost of timing analysis, which 
+can account for up to 90% of the total configuration time [11], makes 
+these methods impractical in online scenarios. To reduce configuration 
+time, a prior performance analysis method [13] has been proposed 
+to eliminate iterative optimization and feedback loops. However, its 
+comprehensive evaluation across all flows and egress ports incurs high 
+reconfiguration overhead and limits scalability in dynamic scenar-
+ios. A relatively lightweight admission control method [14] adopts 
+fixed delay budgets and delay-constrained routing to ensure real-time 
+guarantees. However, it exhibits limited adaptability and insufficient 
+capacity for dynamic traffic, and continues to incur high admission 
+time. Therefore, we propose a rapid, scalable, and high-utilization on-
+line admission control method for time-critical ET traffic based on the 
+TSN/ATS+CBS architecture. Our main contributions are summarized as 
+follows:
+• We propose a flexible online admission control framework with 
+real-time guarantees. It supports dynamic resource allocation and 
+reclamation to meet the real-time requirements of dynamic traf-
+fic. Additionally, it confines reconfiguration to small-scale ad-
+justments and eliminates the need for global modifications, thus 
+improving scalability.
+• Meanwhile, within this framework, we propose an efficient and 
+high-utilization resource adjustment strategy based on network 
+calculus (NC) theory. It utilizes the concept of bandwidth balanc-
+ing to avoid bottleneck links and applies a non-trivial analytical 
+result during the solving process to reduce the search space. 
+Thus, it enables rapid bandwidth reallocation with high admission 
+capacity.
+• We evaluate our method against the state-of-the-art using both 
+large-scale synthetic and realistic test cases. The results demon-
+strate that our method increases the number of admitted flows 
+by an average of 44% and reduces admission time by an average 
+of 92%. Additionally, it postpones the occurrence of bottleneck 
+egress ports and the first rejection of admission requests, thus 
+enhancing adaptability.
+The rest of this paper is organized as follows.  Section 2 provides an 
+overview of related work. Section 3 describes the system model. Sec-
+tion 4 outlines the problem statement and presents the overall solution. 
+Section 5 introduces the flexible online admission control framework, 
+and Section 6 proposes the deadline-adaptive local deadline adjustment 
+strategy. Experimental evaluations are conducted in Section 7. Finally, 
+Section 8 concludes the paper.
+2. Related work
+TSN is a suite of protocols standardized by the IEEE 802.1 working 
+group, designed to support time synchronization, bounded low latency, 
+high reliability, and security [15]. It is particularly well-suited for hard 
+real-time applications with stringent performance requirements and has 
+been widely adopted in automotive, industrial, and avionics domains. 
+TSN integrates a variety of traffic shaping mechanisms, including the 
+TAS [4], CBS [6], ATS [7], and CQF [16]. With appropriate config-
+uration, these mechanisms enable deterministic communication with 
+hard real-time guarantees. However, the rise of dynamic applications 
+presents new challenges. In particular, achieving admission control 
+for dynamically changing time-critical traffic with deadline-guaranteed 
+configurations remains an open problem [17]. Given the differences in 
+scheduling and configuration between TT and ET traffic, we summarize 
+related work for each category separately.
+For TT traffic, various online admission control methods have 
+been proposed to support dynamic scenarios while meeting strict jitter 
+and deadline requirements. Some studies are based on time-sensitive 
+software-defined networking (TSSDN) [18,19], which allocate exclu-
+sive time slots at hosts and reserve the entire transmission path for 
+each flow to support incremental admission. Other works [20–23] are 
+based on TAS defined in IEEE 802.1Qbv, employing lightweight GCL 
+configuration methods to support the dynamic addition and removal 
+of flows. Since the GCL mechanism allows for finer-grained allocation 
+of transmission times and windows, these methods reduce resource 
+waste and improve bandwidth utilization compared to TSSDN-based 
+approaches. Another line of works [24,25] are based on CQF defined 
+in IEEE 802.1Qch. By introducing fixed time-slot partitioning and 
+enqueue/dequeue scheduling logic, these methods further simplify 
+the GCL configuration process and support more efficient incremental 
+scheduling of flows. Although the above methods for TT traffic inte-
+grate deadline constraints into the routing and scheduling process and 
+can provide strict real-time guarantees once scheduling is completed, 
+the configuration and scheduling of TT traffic have been proven to be 
+NP-hard [26], making them computationally expensive. Furthermore, 
+the TT traffic model is not suitable for all types of time-critical traffic, 
+which limits its applicability in diverse traffic scenarios.
+Compared to TT traffic, ET traffic relies on configuring only a 
+few key parameters (e.g., bandwidth) and supports both periodic and 
+sporadic flows, offering greater adaptability. Nevertheless, dedicated 
+timing analysis methods are still needed to verify deadline compli-
+ance. One commonly used category of configuration methods relies on 
+heuristic algorithms that iteratively optimize based on timing analysis 
+feedback [27–29]. These methods require performing timing analysis 
+for each candidate solution during configuration space exploration, 
+resulting in significant cumulative computational overhead. While they 
+may be suitable for offline use, they are impractical for large-scale 
+online scenarios. Although the incremental timing analysis method [30] 
+reduces computational overhead by avoiding global reanalysis, its time-
+saving benefits are limited when a large number of flows change 
+simultaneously and can still lead to considerable computational costs 
+when integrated into an iterative feedback loop. To reduce config-
+uration time, Zhao et al. [13] have proposed a prior performance 
+analysis method that assigns local deadlines to each port and employs 
+a closed-form expression for minimum bandwidth allocation, thereby 
+avoiding iterative optimization. However, it still relies on global flow 
+and port information, leading to high reconfiguration overhead and 
+limited scalability. Guck et al. [31] and Maile et al. [14] have proposed 
+admission control methods for SP and CBS, which use fixed delay 
+budgets and delay-constrained least-cost (DCLC) routing to ensure real-
+time guarantees. However, the reliance on fixed delay budgets limits 
+adaptability to dynamic flows and consequently reduces admission ca-
+pacity. Consequently, this paper proposes an online admission control 
+method for time-critical ET traffic, leveraging adaptive local dead-
+lines and a rapid, high-utilization assignment strategy to achieve high 
+responsiveness, scalability, and optimal resource utilization.
+3. System model
+3.1. TSN network and flow model
+In a TSN network, the network graph  = (  , ) consists of a set 
+of nodes  (including end-systems (ESs) and switches (SWs)) and a 
+set of physical links . We define (𝑢, 𝑣) ∈  as the physical link from 
+node 𝑢 to node 𝑣, also representing the corresponding egress port, with 
+a transmission rate of 𝐶. The network supports both time-critical event-
+triggered (ET) traffic (also known as audio-video bridging (AVB) traffic) 
+and non-time-critical best-effort (BE) traffic. An AVB flow 𝑓 ∈  is 
+defined by the tuple ⟨𝑠𝑓 , 𝑑𝑓 , 𝑙𝑓 , 𝑝𝑓 , 𝐷E2E
+𝑓 ⟩, where 𝑠𝑓 is the source ES, 𝑑𝑓
+is the destination ES, 𝑙𝑓 is the frame size, 𝑝𝑓 is the frame interval, and 
+𝐷E2E
+𝑓  is the end-to-end deadline. The maximum frame size for BE traffic 
+is denoted as 𝑙max
+BE . A summary of the notations is provided in Table  1.
+Journal of Systems Architecture 168 (2025) 103539 
+2 
+
+
+===== PAGE 3 =====
+S. Yu et al.
+Fig. 1. TSN/ATS+CBS egress port architecture.
+3.2. TSN/ATS+CBS egress port architecture
+For each egress port (𝑢, 𝑣) ∈ , this paper adopts a hybrid ar-
+chitecture that combines ATS [7,32] and CBS [6], referred to as 
+TSN/ATS+CBS [33], as depicted in Fig.  1. This architecture performs 
+per-class scheduling and provides eight shared queues. Among these, 
+𝑁AVB (1 ≤ 𝑁AVB ≤ 8) queues are assigned to the time-critical AVB 
+traffic classes 𝑖 (𝑖 ∈ [1, 𝑁AVB]), while the remaining queues are available 
+for non-time-critical BE traffic. Moreover, an AVB class 𝑖 is defined to 
+have a higher priority than class 𝑖 + 1.
+For AVB traffic, this hybrid architecture employs ATS to prevent 
+burst cascades and CBS to provide flexible bandwidth reservation. 
+Incoming AVB flows are initially directed to shaped queues according 
+to the queuing schemes (QAR1, QAR2, QAR3) described in [34]. The 
+ATS shaper, positioned after the shaped queues, enforces the committed 
+burst size 𝑏𝑓 = 𝑙𝑓 and the committed information rate 𝜌𝑓 = 𝑙𝑓 ∕𝑝𝑓 for 
+each flow 𝑓 by computing the eligible transmission time. The flows 
+then proceed to the shared queues, where the CBS shaper manages 
+traffic based on the reserved bandwidth 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖  (also known as the 
+idle slope) for class 𝑖 at the egress port (𝑢, 𝑣). It maintains a credit value, 
+initialized to zero, which decreases at a rate of 𝑠𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 = 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 − 𝐶
+during frame transmission and increases at a rate of 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖  when 
+frames are queued due to high-priority transmissions or negative credit. 
+Additionally, the upper limit of bandwidth allocated to all AVB classes 
+at the egress port, denoted by 𝑖𝑑𝑆𝑙 max, is set by the designer but cannot 
+exceed 𝐶 (e.g., 𝑖𝑑𝑆𝑙 max = 0.75𝐶).
+3.3. Network calculus-based worst-case delay analysis
+Network Calculus (NC) [35] is a well-established theory for worst-
+case delay analysis, which employs min-plus algebra to define arrival 
+curves and service curves. The arrival curve 𝛼(𝑡) bounds the cumulative 
+amount of data bits that arrive during any time interval of length 𝑡, 
+while the service curve 𝛽(𝑡) characterizes the minimum service capacity 
+that an element provides during any time interval of length 𝑡. Assume 
+that (𝑡) denotes the input cumulative function, which represents the 
+total number of data bits that have arrived from flows by time 𝑡. The 
+arrival process (𝑡) is said to be constrained by an arrival curve 𝛼(𝑡) if 
+(𝑡) ≤ inf
+0≤𝑠≤𝑡
+{(𝑠) + 𝛼(𝑡 − 𝑠)}. (1)
+Assume that ∗(𝑡) denotes the output cumulative function, representing 
+the total number of data bits that have departed by time 𝑡. The service 
+process is said to be constrained by a service curve 𝛽(𝑡) if 
+∗(𝑡) ≥ inf
+0≤𝑠≤𝑡
+{(𝑠) + 𝛽(𝑡 − 𝑠)}. (2)
+If a flow constrained by an arrival curve 𝛼(𝑡) traverses an element 
+that offers a service curve 𝛽(𝑡), the worst-case delay bound is given by 
+the maximum horizontal distance between the two curves, denoted as 
+ℎ(𝛼, 𝛽), as shown in Fig.  2(a). This bound is mathematically defined as 
+ℎ(𝛼(𝑡), 𝛽(𝑡)) = sup
+𝑠≥0
+{inf {𝜏 ≥ 0|𝛼(𝑠) ≤ 𝛽(𝑠 + 𝜏)}}. (3)
+Table 1
+Summary of notations.
+ Symbol Meaning  
+  Network graph  
+  Set of nodes  
+  Set of physical links  
+ (𝑢, 𝑣) Physical link from node 𝑢 to node 𝑣, also representing the 
+corresponding egress port
+ 
+ 𝐶 Transmission rate of physical link  
+ 𝑓 An AVB flow  
+ 𝑠𝑓 Source ES of flow 𝑓  
+ 𝑑𝑓 Destination ES of flow 𝑓  
+ 𝑙𝑓 Frame size of flow 𝑓  
+ 𝑝𝑓 Frame interval of flow 𝑓  
+ 𝐷E2E
+𝑓 End-to-end deadline of flow 𝑓  
+ 𝑏𝑓 Committed burst size of flow 𝑓  
+ 𝜌𝑓 Committed information rate of flow 𝑓  
+ 𝑟𝑓 Route of flow 𝑓  
+ 𝑁AVB Number of AVB classes supported by each egress port  
+  Set of AVB flows  
+  (𝑢,𝑣)
+𝑖 Set of AVB flows of class 𝑖 at egress port (𝑢, 𝑣)  
+ 𝑖𝑑𝑆𝑙 max Upper limit of bandwidth allocated to all AVB classes at the 
+egress port
+ 
+ 𝛼(𝑢,𝑣)
+𝑖 Arrival curve of the aggregate flows of AVB class 𝑖 before 
+the egress port (𝑢, 𝑣)
+ 
+ 𝛽(𝑢,𝑣)
+𝑖 Service curve for AVB class 𝑖 at the egress port (𝑢, 𝑣)  
+ 𝑙max
+𝑖 Maximum frame size of AVB class 𝑖  
+ 𝑙max
+>𝑖 Maximum frame size of traffic with lower priorities than 𝑖  
+ 𝑙max Maximum frame size in the network  
+ 𝑙max
+BE Maximum frame size of BE traffic  
+ 𝐷(𝑢,𝑣)
+𝑖 Existing local deadline for AVB class 𝑖 at egress port (𝑢, 𝑣) in 
+the existing configuration
+ 
+ ̂𝐷(𝑢,𝑣)
+𝑖 Adjusted local deadline for AVB class 𝑖 at egress port (𝑢, 𝑣) in 
+the flow addition process
+ 
+ ̌𝐷(𝑢,𝑣)
+𝑖 Adjusted local deadline for AVB class 𝑖 at egress port (𝑢, 𝑣) in 
+the flow removal process
+ 
+ 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 Existing idle slope, i.e. bandwidth for AVB class 𝑖 at egress 
+port (𝑢, 𝑣) in the existing configuration
+ 
+ ̂𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑖 Adjusted idle slope, i.e. bandwidth for AVB class 𝑖 at egress 
+port (𝑢, 𝑣) in the flow addition process
+ 
+ ̌𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑖 Adjusted idle slope, i.e. bandwidth for AVB class 𝑖 at egress 
+port (𝑢, 𝑣) in the flow removal process
+ 
+ 𝐷(𝑢,𝑣)
+𝑓 Local deadline for flow 𝑓 at egress port (𝑢, 𝑣) ∈ 𝑟𝑓  
+ (𝑠, 𝑑) Candidate route set for source–destination pair, where 𝑠 and 
+𝑑 are end-systems
+ 
+ 𝑅(𝑢,𝑣) Available residual bandwidth for AVB traffic at the egress 
+port (𝑢, 𝑣)
+ 
+ 𝛷𝑖 Extra bandwidth allocated to AVB class 𝑖  
+Fig. 2. (a) Concepts in network calculus theory, (b) worst-case delay bound in 
+TSN/ATS+CBS.
+The NC-based worst-case delay analysis for TSN/ATS+CBS has been 
+provided in [33]. In TSN/ATS+CBS, with the assistance of ATS reshap-
+ing, each AVB flow 𝑓 conforms to a committed burst size 𝑏𝑓 = 𝑙𝑓 and 
+a committed information rate 𝜌𝑓 = 𝑙𝑓 ∕𝑝𝑓 at each egress port along 
+its route. Then, the arrival curve of the aggregate flows of AVB class 𝑖
+before the egress port (𝑢, 𝑣) is 
+𝛼(𝑢,𝑣)
+𝑖 (𝑡) =
+∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+(𝜌𝑓 ⋅ 𝑡 + 𝑏𝑓
+) , (4)
+where  (𝑢,𝑣)
+𝑖  is the subset of AVB flows  with class 𝑖 queuing at egress 
+port (𝑢, 𝑣). The CBS service curve [8] for AVB class 𝑖 at egress port (𝑢, 𝑣)
+Journal of Systems Architecture 168 (2025) 103539 
+3 
+
+
+===== PAGE 4 =====
+S. Yu et al.
+Fig. 3. (a) A fully centralized model, (b) flexible online admission control framework.
+is 
+𝛽(𝑢,𝑣)
+𝑖 (𝑡) = 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖
+⎡
+⎢
+⎢
+⎢
+⎢⎣
+𝑡 −
+∑𝑖−1
+𝑗=1
+(
+𝑠𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 ⋅
+𝑙max
+𝑗
+𝐶
+)
+− 𝑙max
+>𝑖
+∑𝑖−1
+𝑗=1 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 − 𝐶
+⎤
+⎥
+⎥
+⎥
+⎥⎦
++
+, (5)
+where 𝑙max
+𝑖  is the maximum frame size of AVB class 𝑖, and 𝑙max
+>𝑖 =
+max𝑗>𝑖 {𝑙max
+𝑗 , 𝑙max
+BE } is the maximum frame size of traffic with lower 
+priorities than 𝑖. The upper bound of the worst-case delay for any flow 
+𝑓 ∈  (𝑢,𝑣)
+𝑖  queuing at egress port (𝑢, 𝑣) is the maximum horizontal 
+distance between the arrival curve 𝛼(𝑢,𝑣)
+𝑖 (𝑡) and the service curve 𝛽(𝑢,𝑣)
+𝑖 (𝑡). 
+Furthermore, it is proven in [36] that ATS shaping after a first-in, first-
+out (FIFO) system does not add extra delays to the worst-case delay of 
+the combination. Therefore, AVB flows do not experience extra worst-
+case delays in the reshaping queues before ATS. The worst-case delay 
+bound 𝐻 (𝑢,𝑣)
+𝑖  for AVB class 𝑖 queuing at egress port (𝑢, 𝑣), as shown in 
+Fig.  2(b), can ultimately be expressed as 
+𝐻 (𝑢,𝑣)
+𝑖 =
+∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+𝑏𝑓
+𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖
++ 𝑙max
+𝐶 + (𝑖 − 1)𝑙max
+𝐶 − ∑𝑖−1
+𝑗=1 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗
+, (6)
+where 𝑙max
+𝑖  is simplified to 𝑙max, representing the maximum frame size 
+in the network. In this way, Eq. (6) remains valid even if the maximum 
+frame sizes of other classes vary due to dynamic traffic changes.
+4. Problem statement and overall solution
+4.1. Problem statement
+A fully centralized model that supports dynamic traffic changes 
+comprises two main components: the centralized user configuration 
+(CUC) and the centralized network configuration (CNC), as illustrated 
+in Fig.  3(a). The CUC collects flow requests from end systems and 
+forwards them to the CNC, which is responsible for managing existing 
+configurations and executing admission control. When a new flow is 
+requested, the CNC evaluates the available resources to determine if 
+the flow can be admitted and, if so, performs the necessary resource 
+allocation. When an existing flow is removed, the CNC reclaims the 
+resources. This resource allocation and reclamation should not only 
+satisfy the end-to-end deadline requirements for all flows but also 
+address the needs of online admission control scenarios, including rapid 
+response, scalability, and high resource utilization.
+Existing resource allocation methods that provide real-time guar-
+antees for ET traffic in TSN still face limitations in online admission 
+control scenarios. Conventional heuristic methods typically rely on 
+iterative processes combined with timing analysis feedback to ver-
+ify whether the end-to-end delay satisfies real-time constraints. This 
+process incurs high computational overhead, with typical runtimes 
+reaching several minutes or even hours [12]. As the network scale 
+increases, the search space grows exponentially, further increasing the 
+computational burden and significantly hindering the responsiveness of 
+online admission control. The prior performance analysis method [13] 
+significantly reduces computational complexity by decomposing end-
+to-end deadlines into local deadlines at each port and allocating only 
+the minimum required bandwidth, thereby eliminating the need for 
+repeated global timing analysis. However, it requires global informa-
+tion about all flows and ports to accurately allocate the minimum 
+bandwidth. The introduction of a new flow may trigger reconfiguration 
+across all ports and traffic classes, resulting in high reconfiguration 
+overhead and limited scalability in dynamic, large-scale networks. The 
+state-of-the-art admission control method [14] pre-configures fixed 
+delay budgets at egress ports to confine reconfiguration to the spe-
+cific routes of changing flows, thereby reducing the reconfiguration 
+overhead. However, due to its reliance on pre-configured fixed delay 
+budgets, it may not precisely match the actual real-time requirements 
+of dynamic flows. Hence, some ports may remain underutilized over 
+time, while others may experience resource contention. Therefore, even 
+with sufficient overall bandwidth, new flows may be rejected due to 
+local port constraints, thereby limiting admission capacity and reducing 
+bandwidth utilization. Therefore, there is an urgent need for a dynamic 
+resource allocation approach to support the admission control of time-
+critical ET traffic. Such an approach should not only meet end-to-end 
+requirements but also ensure rapid responsiveness, strong scalability, 
+and high bandwidth utilization.
+4.2. Overall admission control solution
+To address these issues, we propose an online admission control 
+framework for time-critical ET traffic based on the TSN/ATS+CBS 
+architecture, as shown in Fig.  3(b). It establishes flexible local deadlines 
+to enforce port-level real-time constraints on traffic transmission, sup-
+porting low-overhead runtime adjustments to both local deadlines and 
+bandwidth allocation to provide real-time guarantees for dynamically 
+changing traffic.
+Before the system operates, the initial flows are configured in an 
+offline scenario (Section 5.1). When a new flow is requested to be 
+added (Section 5.2), the method evaluates every route in the candidate 
+set. For each candidate route, it employs an efficient, high-utilization 
+strategy to calculate the local deadline adjustments required to ac-
+commodate the new flow (Section 6), followed by the computation 
+of the minimum bandwidth necessary to meet these adjusted local 
+deadlines. Finally, the candidate route and its associated bandwidth 
+allocation, yielding the lowest overall bandwidth consumption, are 
+selected as the admission scheme for the new flow. When an existing 
+flow is removed (Section 5.3), the method adjusts the local deadlines 
+and bandwidth allocations along its route to reclaim resources, thus 
+conserving bandwidth for future flow admissions and non-real-time 
+traffic transmission.
+Compared to current approaches, our method incorporates several 
+unique design features that make it well-suited for online admission 
+Journal of Systems Architecture 168 (2025) 103539 
+4 
+
+
+===== PAGE 5 =====
+S. Yu et al.
+Fig. 4. Comparison of reconfiguration overhead caused by local deadline adjustment 
+in TSN/CBS and TSN/ATS+CBS.
+control of time-critical ET traffic in dynamic scenarios, as detailed 
+below:
+(1) Flexible Adjustable Local Deadline: Local deadlines serve as critical 
+constraints on port-level bandwidth allocation. Hence, their setting has 
+a significant impact on overall bandwidth utilization. In contrast to 
+methods that rely on fixed delay budgets, such as [14], our method 
+supports flexible adjustable local deadlines at each egress port. This de-
+sign enhances allocation flexibility and promotes improved bandwidth 
+utilization.
+(2) Reducing Reconfiguration Overhead: Local deadline adjustments in 
+typical TSN/CBS architecture can cause high reconfiguration overhead, 
+as illustrated in Fig.  4. When the local deadline at an egress port 
+increases, the jitter of flows at that port also grows, leading to more 
+pronounced burstiness at subsequent ports. Thus, all subsequent ports 
+must be reconfigured to ensure that their local deadlines are not vio-
+lated, thus causing high reconfiguration overhead. To address this issue, 
+we integrated ATS into TSN/CBS to eliminate burst cascades, thereby 
+preventing the effects of local deadline adjustments from propagating 
+to other ports. This design decouples the configuration of egress ports, 
+effectively confining the reconfiguration scope and reducing overhead.
+(3) Efficient and High-utilization Resource Reallocation: In response to 
+traffic changes, we aim to rapidly adjust bandwidth allocation to meet 
+the end-to-end deadlines of ET traffic while maximizing bandwidth 
+utilization. Although [13] provides an approach for deriving the mini-
+mum required bandwidth at the port level from given local deadlines, 
+determining appropriate local deadlines for each port remains an open 
+problem. Therefore, we propose an efficient and high-utilization local 
+deadline adjustment strategy. It aims to balance residual bandwidth to 
+avoid bottlenecks, thereby improving admission capacity. Furthermore, 
+it formally derives a non-trivial coupling relationship among local 
+deadlines under balanced residual bandwidth conditions, reducing the 
+solution space and enabling rapid solving.
+5. Flexible online admission control framework
+5.1. Configuration before admission control
+Before the online admission control at runtime, the existing con-
+figuration should provide real-time guarantees for offline flows. This 
+configuration is based on a QoS-based minimum bandwidth allocation 
+analytical method [13] and is carried out in two stages:
+The first stage is to determine the local deadline for each class at 
+every egress port, ensuring that the end-to-end deadline requirements 
+of all offline flows are met. For any egress port (𝑢, 𝑣) and AVB class 𝑖, 
+the local deadline 𝐷(𝑢,𝑣)
+𝑖  can be obtained by 
+Stage 1: ∀(𝑢, 𝑣) ∈ , 𝑖 ∈ [1, 𝑁AVB] ∶
+𝐷(𝑢,𝑣)
+𝑖 = min
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+{
+𝐷(𝑢,𝑣)
+𝑓
+}
+, (7)
+where 
+∑
+(𝑢,𝑣)∈𝑟𝑓
+𝐷(𝑢,𝑣)
+𝑓 ≤ 𝐷E2E
+𝑓 , (8)
+where  (𝑢,𝑣)
+𝑖  denotes the set of existing flows (currently only offline 
+flows) with class 𝑖 queuing at egress port (𝑢, 𝑣), 𝑟𝑓 denotes the route 
+of flow 𝑓 . 𝐷(𝑢,𝑣)
+𝑓  denotes the local deadline of flow 𝑓 at egress port 
+(𝑢, 𝑣) ∈ 𝑟𝑓 , with the constraint that the sum of local deadlines along 
+its path does not exceed its end-to-end deadline. 𝐷(𝑢,𝑣)
+𝑓  for offline flows 
+can be obtained by [13]. In order to meet the strictest deadlines, the 
+local deadline for each class at every egress port in Eq. (7) is set to the 
+minimum of the local deadlines for all flows within that class at that 
+port.
+The second stage is to allocate the minimum bandwidth for each 
+class at every egress port to satisfy the local deadlines. This stage is 
+defined as 
+Stage 2: ∀(𝑢, 𝑣) ∈ , 𝑖 ∈ [1, 𝑁AVB] ∶
+𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 = max
+{ ∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+𝑏𝑓
+𝐷(𝑢,𝑣)
+𝑖 − 𝑙max
+𝐶 − (𝑖−1)𝑙max
+𝐶−∑𝑖−1
+𝑗=1 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗
+⏟ ⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞ ⏟ ⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞⏞ ⏟
+𝑓 𝑖𝑟𝑠𝑡
+,
+∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+𝜌𝑓
+⏟⏞⏞⏟⏞⏞⏟
+𝑠𝑒𝑐𝑜𝑛𝑑
+}
+, (9)
+where the first term determines the minimum bandwidth required to 
+satisfy the local deadline 𝐷(𝑢,𝑣)
+𝑖  for each class 𝑖 ∈ [1 , 𝑁AVB] at every 
+egress port (𝑢, 𝑣) ∈ , the second term maintains network stability.
+Eq. (9) is derived from the fact that ATS performs per-flow shaping 
+at each hop, maintaining the burst of flow 𝑓 as 𝑏𝑓 = 𝑙𝑓 and the rate as 
+𝜌𝑓 = 𝑙𝑓 ∕𝑝𝑓 , thereby effectively preventing burst accumulation across 
+multi-hop paths due to queuing delays. Consequently, at egress port 
+(𝑢, 𝑣), the total burst and total rate of the aggregate arrival curve for 
+flows of class 𝑖 are ∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+𝑏𝑓 and ∑
+𝑓 ∈ (𝑢,𝑣)
+𝑖
+𝜌𝑓 , respectively. Given 
+the above burst and rate, the minimum bandwidth required to meet 
+local deadline constraints can be obtained using the method in [13], 
+as shown by the first term in Eq. (9). To ensure stable transmission, 
+the allocated bandwidth must also accommodate the total rate demand, 
+as indicated by the second term in Eq. (9). Notably, the minimum 
+bandwidth allocation in Eq. (9) depends solely on the local deadlines at 
+the current port and is independent of parameters at other ports. This 
+allows each port to flexibly adjust its local deadlines in Eq. (7) without 
+recalculating global bandwidth allocation, thereby enabling localized 
+optimization and rapid adaptation while avoiding large-scale recon-
+figuration. Additionally, Eq. (9) reveals that the minimum bandwidth 
+allocation to lower priority classes depends on the allocation results of 
+higher priority classes. Therefore, the minimum bandwidth should be 
+allocated from high priority to low priority.
+Certain network configuration information needs to be stored in 
+the CNC, which will serve as a reference for online admission control. 
+For each flow 𝑓 ∈  , its tuple, route 𝑟𝑓 , and the local deadlines 
+𝐷(𝑢,𝑣)
+𝑓  along 𝑟𝑓 should be stored. Additionally, for each egress port 
+(𝑢, 𝑣) ∈  and each class 𝑖 ∈ [1, 𝑁AVB], the local deadline 𝐷(𝑢,𝑣)
+𝑖  and the 
+bandwidth allocation 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖  should also be stored. Subsequently, we 
+will explore how to perform online admission control relying on the 
+existing configuration. We aim to maximize the number of admitted 
+flows with minimized bandwidth usage while ensuring that the dead-
+line requirements of both new and existing flows are met, by quickly 
+and dynamically allocating and reclaiming bandwidth resources. The 
+updated configuration will replace the existing one and be stored in 
+the CNC for the next admission control operation.
+5.2. Flow addition process
+When a new flow 𝑓 + requests to be added, the flow addition 
+process in our admission control framework evaluates, based on the 
+available bandwidth, whether to admit the request and how to provide 
+configuration if admitted. The configuration, including the route and al-
+located bandwidth, should satisfy the end-to-end deadline requirements 
+of both the new flow 𝑓 + and existing flows (including both offline 
+flows and online admitted flows) while maximizing the utilization 
+Journal of Systems Architecture 168 (2025) 103539 
+5 
+
+
+===== PAGE 6 =====
+S. Yu et al.
+Fig. 5. Flow addition process.
+of remaining network resources. The specific procedure of the flow 
+addition process is shown in Fig.  5. Given that online routing is time-
+consuming, the candidate route set for each source–destination pair is 
+generated offline through pre-routing. During the online phase, a new 
+flow is assigned the corresponding candidate route set based on its 
+source ES and destination ES (Section 5.2.1). Subsequently, the process 
+provides a deadline-adaptive minimum bandwidth allocation scheme 
+for each route within the candidate set of the new flow (Section 5.2.2). 
+This scheme requires local deadline adjustment only when the existing 
+local deadlines fail to meet the end-to-end deadline of the new flow. 
+The adjustment procedure (Algorithm 1) follows the strategy outlined 
+in Section 6. It first checks resource sufficiency along the route and 
+then, under the constraint of balanced bandwidth allocation, identifies 
+the optimal local deadline adjustment to minimize bandwidth con-
+sumption. To improve the computational efficiency of the adjustment 
+procedure, a non-trivial analytical result (Theorem  1) is integrated to 
+reduce the search space. After that, the minimum required bandwidth 
+is allocated based on the finalized local deadlines. Finally, this process 
+evaluates all the routes within the candidate set of the new flow along 
+with their corresponding bandwidth allocation schemes and selects 
+the optimal configuration (Section 5.2.3). Detailed discussions will be 
+provided as follows.
+5.2.1. Candidate route set provision
+When a new flow 𝑓 + requests to be added, we first need to provide 
+it with a route. To avoid the complexity of online routing, we pre-route 
+a set of candidate routes for each source–destination pair, enabling 
+efficient online retrieval. We use the k-shortest path algorithm [37] 
+to generate the candidate route set (𝑠, 𝑑) for each source–destination 
+pair, where 𝑠 and 𝑑 are end-systems. We choose the k-shortest path 
+algorithm for two main reasons. On the one hand, we aim to se-
+lect shorter routes to achieve larger local deadlines for each egress 
+port along the route. This ensures that more residual bandwidth is 
+reserved according to Eq. (9), providing greater flexibility in band-
+width allocation while maintaining end-to-end deadline performance 
+(Section 5.2.2). On the other hand, providing k routes offers greater 
+flexibility in route selection, thereby better balancing the remaining 
+network bandwidth (Section 5.2.3). During the online phase, a new 
+flow 𝑓 + is assigned the corresponding candidate route set (𝑠𝑓 + , 𝑑𝑓 + )
+based on its source ES 𝑠𝑓 + and destination ES 𝑑𝑓 + .
+5.2.2. Deadline-adaptive minimum bandwidth allocation
+When the new flow 𝑓 + is assigned to a candidate route 𝑟𝑓 + ∈
+(𝑠𝑓 + , 𝑑𝑓 + ), we need to find a bandwidth allocation scheme ( ̂𝑖𝑑𝑆𝑙 ) 
+that meets the end-to-end deadline requirements. This procedure is 
+generally similar to the stages used for configuring offline flows in 
+Section 5.1, with the key difference being in Stage 1, where local 
+deadlines are determined. Since adding the new flow may render 
+existing local deadlines inadequate, we focus on adjusting them to meet 
+the updated end-to-end requirements. In order to minimize changes to 
+the existing configuration, we adjust the local deadlines only at the 
+egress ports along the route 𝑟𝑓 + of the new flow with the assistance 
+of ATS rather than reallocating local deadlines for all egress ports in 
+the network. Once the local deadlines are set, we can directly apply 
+the method from Stage 2 to calculate the bandwidth allocation scheme 
+for adding flow 𝑓 + along the candidate route 𝑟𝑓 + .
+To meet the end-to-end deadline 𝐷E2E
+𝑓 +  of the new flow 𝑓 +, we define 
+the adjusted local deadline ̂𝐷(𝑢,𝑣)
+𝑖  for class 𝑖 (to which 𝑓 + belongs) at 
+each egress port (𝑢, 𝑣) ∈ 𝑟𝑓 + as 
+̂𝐷(𝑢,𝑣)
+𝑖 =
+⎧
+⎪
+⎪
+⎨
+⎪
+⎪⎩
+𝐷(𝑢,𝑣)
+𝑖 ,
+∑
+(𝑢,𝑣)∈𝑟𝑓 +
+𝐷(𝑢,𝑣)
+𝑖 ≤ 𝐷E2E
+𝑓 +
+result f rom Alg. 1,
+∑
+(𝑢,𝑣)∈𝑟𝑓 +
+𝐷(𝑢,𝑣)
+𝑖 > 𝐷 E2E
+𝑓 + ,
+(10)
+where 𝐷(𝑢,𝑣)
+𝑖  is the existing local deadline for class 𝑖 at egress port (𝑢, 𝑣), 
+and 𝐷E2E
+𝑓 +  is the end-to-end deadline of the new flow 𝑓 +. There are two 
+cases for adjusting the local deadlines:
+(i) No Adjustment Required: When the sum of the existing local 
+deadlines 𝐷(𝑢,𝑣)
+𝑖  along the route 𝑟𝑓 + meets the end-to-end deadline of the 
+new flow 𝑓 +, i.e., ∑
+(𝑢,𝑣)∈𝑟𝑓 + 𝐷(𝑢,𝑣)
+𝑖 ≤ 𝐷E2E
+𝑓 + , there is no need for further 
+adjustments to the local deadlines to meet the end-to-end deadline 
+requirements. As a result, the local deadline settings remain unchanged, 
+i.e., ̂𝐷(𝑢,𝑣)
+𝑖 = 𝐷(𝑢,𝑣)
+𝑖  for (𝑢, 𝑣) ∈ 𝑟𝑓 + .
+(ii) Adjustment Required: When the sum of the existing local dead-
+lines 𝐷(𝑢,𝑣)
+𝑖  along the route 𝑟𝑓 + exceeds the end-to-end deadline of 
+the new flow 𝑓 +, i.e., ∑
+(𝑢,𝑣)∈𝑟𝑓 + 𝐷(𝑢,𝑣)
+𝑖 > 𝐷 E2E
+𝑓 + , 𝐷(𝑢,𝑣)
+𝑖  at each egress 
+port (𝑢, 𝑣) ∈ 𝑟𝑓 + needs to be reduced to meet the end-to-end deadline 
+of new flow 𝑓 +. However, adjusting 𝐷(𝑢,𝑣)
+𝑖  is not straightforward, as 
+reducing these local deadlines will affect the distribution of the remain-
+ing bandwidth across different egress ports in the network, requiring 
+careful balancing to optimize resource utilization. We determine ̂𝐷(𝑢,𝑣)
+𝑖
+using Algorithm 1, specifically discussed in Section 6.1, by employing 
+a deadline-adaptive local deadline adjustment strategy to balance the 
+remaining bandwidth resources.
+After obtaining the adjusted local deadlines ̂𝐷(𝑢,𝑣)
+𝑖  for class 𝑖 at 
+each egress port (𝑢, 𝑣) ∈ 𝑟𝑓 + , the corresponding bandwidth allocation 
+̂𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑗 (𝑗 ∈ [1 , 𝑁AVB], (𝑢, 𝑣) ∈ ) for adding flow 𝑓 + on candidate 
+route 𝑟𝑓 + is determined. This is done by substituting existing flow set 
+with  ∪ {𝑓 +} and 𝐷(𝑢,𝑣)
+𝑖  with ̂𝐷(𝑢,𝑣)
+𝑖  and then calculating using Eq. (9). 
+According to Eq. (9), the addition of flow 𝑓 + only affects the bandwidth 
+allocation for classes with priorities equal to or lower than that of 
+flow 𝑓 + on route 𝑟𝑓 + , without causing large-scale reconfiguration. 
+Additionally, the local deadline 𝐷(𝑢,𝑣)
+𝑓 +  for new flow 𝑓 + along the route 
+𝑟𝑓 + is assigned the value of ̂𝐷(𝑢,𝑣)
+𝑖 , ensuring that ∑
+(𝑢,𝑣)∈𝑟𝑓 + 𝐷(𝑢,𝑣)
+𝑓 + ≤ 𝐷E2E
+𝑓 +
+is satisfied in accordance with Eq. (8) from Stage 1.
+5.2.3. Optimal configuration selection
+Finally, we obtain the optimal configuration by selecting the op-
+timal route 𝑟opt
+𝑓 + from the 𝑘 candidate routes 𝑟𝑓 + ∈ (𝑠𝑓 + , 𝑑𝑓 + ) based 
+on the corresponding bandwidth allocation ( ̂𝑖𝑑𝑆𝑙 ) obtained from Sec-
+tion 5.2.2. Initially, we need to evaluate the feasibility of each candi-
+date route, which is determined by two conditions. The first condition 
+is that feasible local deadlines can be provided by Eq. (10). The second 
+condition is that the sum of bandwidth allocations at each egress port 
+does not exceed the upper limit 𝑖𝑑𝑆𝑙 max, i.e., ∑𝑁AVB
+𝑖=1
+̂𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑖 ≤ 𝑖𝑑𝑆𝑙 max. 
+If at least one feasible route exists, we will select the optimal one to 
+admit the new flow 𝑓 + using the following method. If no feasible route 
+exists, it is impossible to find a route that meets the end-to-end deadline 
+Journal of Systems Architecture 168 (2025) 103539 
+6 
+
+
+===== PAGE 7 =====
+S. Yu et al.
+requirement of the new flow, and the request to add the new flow will 
+be rejected.
+The optimal route 𝑟opt
+𝑓 + is defined as 
+𝑟opt
+𝑓 + = arg min
+𝑟𝑓 + ∈(𝑠𝑓 + ,𝑑𝑓 + )∧feasible
+{𝑐𝑜𝑠𝑡(𝑟𝑓 + )}, (11)
+and 
+𝑐𝑜𝑠𝑡(𝑟𝑓 + ) =
+∑
+(𝑢,𝑣)∈
+(
+1
+𝑖𝑑𝑆𝑙 max − ∑𝑁AVB
+𝑖=1
+̂𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑖
+− 1
+𝑖𝑑𝑆𝑙 max
+)2
+, (12)
+where 𝑐𝑜𝑠𝑡(𝑟𝑓 + ) represents the network cost associated with the band-
+width allocation scheme for adding flow 𝑓 + along the candidate route 
+𝑟𝑓 + . Considering its residual bandwidth, the port cost of (𝑢, 𝑣) is defined 
+as 1∕(𝑖𝑑𝑆𝑙 max−∑𝑁AVB
+𝑖=1
+̂𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑖 ). When no bandwidth is utilized, this cost 
+reaches its minimum value of 1∕𝑖𝑑𝑆𝑙 max. The network cost 𝑐𝑜𝑠𝑡(𝑟𝑓 + ) in 
+Eq. (12) is determined by calculating the difference between the actual 
+port cost and the minimum port cost, squaring this difference, and 
+summing the results of all egress ports. When the residual bandwidth of 
+an egress port is low, the network cost 𝑐𝑜𝑠𝑡(𝑟𝑓 + ) rises sharply, indicating 
+bottleneck egress ports nearing resource exhaustion, potentially hinder-
+ing future flow admissions. Consequently, we can select the optimal 
+route 𝑟opt
+𝑓 + by minimizing the network cost as defined in Eq. (12), which 
+balances the residual bandwidth. This helps avoid bottleneck egress 
+ports caused by resource exhaustion, thereby enhancing the capacity 
+of the network to accommodate future traffic.
+5.3. Flow removal process
+After removing an existing flow 𝑓 −, the flow removal process needs 
+to provide a bandwidth allocation scheme ( ̌𝑖𝑑𝑆𝑙 ) to reclaim bandwidth 
+resources for future traffic access. First, we remove the local deadlines 
+related to flow 𝑓 −. The adjusted local deadline ̌𝐷(𝑢,𝑣)
+𝑖  for class 𝑖 (to 
+which 𝑓 − belongs) at egress port (𝑢, 𝑣) ∈ 𝑟𝑓 − is 
+̌𝐷(𝑢,𝑣)
+𝑖 = min
+𝑓 ∈( ⧵{𝑓 −})(𝑢,𝑣)
+𝑖
+{
+𝐷(𝑢,𝑣)
+𝑓
+}
+. (13)
+Subsequently, the adjusted bandwidth allocation ̌𝑖𝑑𝑆𝑙
+(𝑢,𝑣)
+𝑗 (𝑗 ∈ [1, 𝑁AVB],
+(𝑢, 𝑣) ∈ ) for removing flow 𝑓 − is determined. This is done by 
+substituting existing flow set  with  ⧵ {𝑓 −} and 𝐷(𝑢,𝑣)
+𝑖  with ̌𝐷(𝑢,𝑣)
+𝑖
+and then calculating in Eq. (9). Similar to flow addition, the bandwidth 
+reclamation after removing flow 𝑓 − affects only the bandwidth alloca-
+tion for classes with priorities equal to or lower than that of flow 𝑓 −
+on route 𝑟𝑓 − , without the need for large-scale reconfiguration.
+6. Deadline-adaptive local deadline adjustment strategy
+6.1. Challenges in local deadline adjustment
+As mentioned in Section 5.2.2, if the sum of the existing local 
+deadlines 𝐷(𝑢,𝑣)
+𝑖  for class 𝑖 (to which 𝑓 + belongs) along route 𝑟𝑓 +
+exceeds the end-to-end deadline 𝐷E2E
+𝑓 + , 𝐷(𝑢,𝑣)
+𝑖  for each (𝑢, 𝑣) ∈ 𝑟𝑓 + should 
+be adjusted to meet the end-to-end deadline. Since local deadlines serve 
+as constraints on port-level bandwidth allocation, their adjustment 
+plays a crucial role in overall network bandwidth utilization. However, 
+developing an efficient and high-utilization local deadline adjustment 
+strategy is quite challenging. If the local deadlines along the route 
+are treated as independent decision variables, the problem becomes a 
+multivariable combinatorial optimization task, which generally entails 
+high computational costs. Some studies [38] have directly modified the 
+local deadlines 𝐷(𝑢,𝑣)
+𝑖 , adjusting them either equally or proportionally. 
+Although these approaches are simple and computationally efficient, 
+they do not balance residual bandwidth, which can lead to early re-
+source exhaustion at bottleneck egress ports and thus reduce admission 
+capacity.
+Fig. 6. An example of local deadlines adjusted by minimum consistent ratio 𝛾 = 0 .25
+to meet the new flow deadline.
+6.2. Local deadline adjustment strategy
+In this section, we propose a local deadline adjustment strategy, 
+as illustrated in Fig.  6. This strategy aims to adjust local deadlines to 
+meet end-to-end deadlines while maximizing resource utilization by 
+reducing bandwidth consumption and balancing residual bandwidth. 
+Specifically, we define 𝛾 as the ratio of extra bandwidth an egress 
+port receives in the adjustment to its original residual bandwidth, 
+and require that every port along 𝑟𝑓 + adopt the same 𝛾. This can 
+synchronize resource usage across egress ports and helps prevent the 
+premature emergence of bottleneck links. Building on this, we further 
+derive an analytical result that maps 𝛾 to the corresponding minimum 
+adjusted local deadline ̂𝐷(𝑢,𝑣)
+𝑖  for each egress port, with its correctness 
+proved in Theorem  1. This mapping effectively tackles the complexity 
+introduced by high-priority bandwidth adjustments on lower-priority 
+traffic and uniquely determines ̂𝐷(𝑢,𝑣)
+𝑖  for each (𝑢, 𝑣) ∈ 𝑟𝑓 + through 
+analytical computation based on 𝛾. As a result, all local deadlines are 
+now coupled through 𝛾, reducing the original multivariable combinato-
+rial optimization problem to a single-variable problem of determining 
+𝛾. Finally, recognizing the nonlinearity of the mapping, we employ a 
+binary search to find the optimal (i.e., minimum feasible) value of 𝛾
+that satisfies the end-to-end deadline requirements, thereby minimizing 
+bandwidth usage. The process for obtaining this minimum 𝛾 and the 
+corresponding updated local deadlines ̂𝐷(𝑢,𝑣)
+𝑖  for each (𝑢, 𝑣) ∈ 𝑟𝑓 + is 
+detailed in the following algorithm.
+Algorithm: We propose a local deadline adjustment algorithm, and 
+its pseudo-code is presented in Algorithm 1. The algorithm takes the 
+new flow 𝑓 + and its candidate route 𝑟𝑓 + as input. Based on the local 
+deadline adjustment strategy described above, it computes a set of 
+local deadlines { ̂𝐷(𝑢,𝑣)
+𝑖 }(𝑢,𝑣)∈𝑟𝑓 + such that the end-to-end deadline 𝐷E2E
+𝑓 +
+is exactly satisfied.
+The algorithm begins by computing the available residual band-
+width 𝑅(𝑢,𝑣) for each port (𝑢, 𝑣) ∈ 𝑟𝑓 + using the CalResBand function 
+(Eq. (14) in Section 6.2.1) (lines 1–3). According to Eq. (9), achieving 
+a tighter local deadline for target class 𝑖 at any egress port (𝑢, 𝑣)
+requires more bandwidth, whereas the available bandwidth is limited. 
+To evaluate whether the available residual bandwidth is sufficient to 
+admit flow 𝑓 + under its end-to-end deadline constraint, we assume that 
+the entire available bandwidth 𝑅(𝑢,𝑣) is allocated as extra bandwidth 
+and employ the MapBand2D function (Eq. (16) in Section 6.2.2) to 
+compute the minimum achievable local deadline ̂𝐷(𝑢,𝑣),min
+𝑖  (lines 4–6).
+MapBand2D optimally allocates the given extra bandwidth among all 
+traffic classes to maximize the bandwidth assigned to the target class 
+𝑖 at the given port (𝑢, 𝑣), thereby determining the corresponding min-
+imum adjusted local deadline. Since MapBand2D is a monotonically 
+decreasing function of the local deadline with respect to the allocated 
+bandwidth, any local deadline smaller than ̂𝐷(𝑢,𝑣),min
+𝑖  would require 
+more bandwidth than 𝑅(𝑢,𝑣) and thus exceed the bandwidth capacity 
+of the port. Finally, the condition in line 7 verifies whether the sum 
+of ̂𝐷(𝑢,𝑣),min
+𝑖  along route 𝑟𝑓 + meets the end-to-end deadline constraint. 
+This step determines whether the candidate route 𝑟𝑓 + is feasible for 
+admitting the new flow 𝑓 +. 
+Case1 (Feasible): If the sum of the minimum achievable adjusted 
+local deadlines ̂𝐷(𝑢,𝑣),min
+𝑖  along the route 𝑟𝑓 + is less than or equal to 
+Journal of Systems Architecture 168 (2025) 103539 
+7 
+
+
+===== PAGE 8 =====
+S. Yu et al.
+Algorithm 1 Local Deadline Adjustment Algorithm
+ Input: 𝑓 +: flow for addition, 𝑟𝑓 + : candidate route;
+ Output: { ̂𝐷(𝑢,𝑣)
+𝑖 }(𝑢,𝑣)∈𝑟𝑓 + : adjusted local deadlines for class
+𝑖 along route 𝑟𝑓 + ;
+1: for (𝑢, 𝑣) ∈ 𝑟𝑓 + do
+2:  𝑅(𝑢,𝑣) ← CalResBand(𝑓 +, (𝑢, 𝑣))
+3: end for
+4: for (𝑢, 𝑣) ∈ 𝑟𝑓 + do
+5:  ̂𝐷(𝑢,𝑣),min
+𝑖 ← MapBand2D(𝑓 +, (𝑢, 𝑣), 𝑅(𝑢,𝑣))
+6: end for
+7: if ∑
+(𝑢,𝑣)∈𝑟𝑓 +
+̂𝐷(𝑢,𝑣),min
+𝑖 ≤ 𝐷E2E
+𝑓 +  then
+8:  𝛾 ← 1, 𝛿 ← 1, 𝑠𝑙𝑎𝑐𝑘 ← −1
+9:  while (𝑠𝑙𝑎𝑐𝑘 < 0) or (𝑠𝑙𝑎𝑐𝑘 > Threshold) do
+10:  for (𝑢, 𝑣) ∈ 𝑟𝑓 + do
+11:  ̂𝐷(𝑢,𝑣)
+𝑖 ← MapBand2D(𝑓 +, (𝑢, 𝑣), 𝛾 ⋅𝑅(𝑢,𝑣))
+12:  end for
+13:  𝑠𝑙𝑎𝑐𝑘 ← 𝐷E2E
+𝑓 + − ∑
+(𝑢,𝑣)∈𝑟𝑓 +
+̂𝐷(𝑢,𝑣)
+𝑖
+14:  𝛿 ← 𝛿∕2
+15:  𝛾 ← (𝑠𝑙𝑎𝑐𝑘 > 0) ? 𝛾 − 𝛿 ∶ 𝛾 + 𝛿
+16:  end while
+17: else
+18:  { ̂𝐷(𝑢,𝑣)
+𝑖 }(𝑢,𝑣)∈𝑟𝑓 + ← infeasible
+19: end if
+the end-to-end deadline 𝐷E2E
+𝑓 + , then a feasible local deadline adjust-
+ment exists. To maximize bandwidth savings, we aim to determine 
+the optimal (i.e., minimum feasible) value of the consistent extra 
+bandwidth ratio 𝛾 (0 < 𝛾 ≤ 1), such that allocating 𝛾 ⋅ 𝑅(𝑢,𝑣) at each 
+port (𝑢, 𝑣) ∈ 𝑟𝑓 + is sufficient to satisfy the end-to-end deadline 𝐷E2E
+𝑓 + . 
+Notably, since MapBand2D function is monotonically decreasing, it 
+follows that 𝛾 reaches its minimum feasible value when the sum of 
+adjusted local deadlines ̂𝐷(𝑢,𝑣)
+𝑖  over the route 𝑟𝑓 + exactly equals the 
+end-to-end deadline 𝐷E2E
+𝑓 + . Given the nonlinearity of MapBand2D, we 
+employ binary approximation to compute this optimal 𝛾. 
+In the binary approximation process, 𝛾 represents the consistent 
+extra bandwidth ratio, 𝛿 indicates the adjustment step size of 𝛾, and 
+𝑠𝑙𝑎𝑐𝑘 (initialized to −1) denotes the difference between the end-to-end 
+deadline of the new flow and the sum of the adjusted local deadlines 
+(line 8). In each iteration, the MapBand2D function (Eq. (16) in 
+Section 6.2.2) computes the minimum adjusted local deadlines ̂𝐷(𝑢,𝑣)
+𝑖
+for each (𝑢, 𝑣) ∈ 𝑟𝑓 + based on the allocated extra bandwidth 𝛾 ⋅ 𝑅(𝑢,𝑣)
+(lines 10–12). The 𝑠𝑙𝑎𝑐𝑘 is then computed, and 𝛾 is adjusted by 𝛿
+based on whether 𝑠𝑙𝑎𝑐𝑘 is positive or negative. This can effectively 
+bring 𝑠𝑙𝑎𝑐𝑘 closer to 0, which guides 𝛾 toward its minimum feasible 
+value (lines 13–15). The approximation terminates when the 𝑠𝑙𝑎𝑐𝑘
+enters the acceptable tolerance range (0, Threshold], at which point 
+the adjusted local deadlines ̂𝐷(𝑢,𝑣)
+𝑖  for each (𝑢, 𝑣) ∈ 𝑟𝑓 + are obtained 
+(line 9). Since MapBand2D is a monotonically decreasing function and 
+the search interval of 𝛾 is halved in each iteration (i.e., the interval 
+length is reduced by 𝛿 each time), the binary approximation process 
+is guaranteed to converge to the optimal adjusted local deadline with 
+minimal bandwidth consumption. 
+Case2 (Infeasible): If the sum of the minimum achievable local 
+deadlines ̂𝐷(𝑢,𝑣),min
+𝑖  along the candidate route 𝑟𝑓 + exceeds the end-to-
+end deadline 𝐷E2E
+𝑓 + , it indicates that the available residual bandwidth 
+along 𝑟𝑓 + is insufficient to meet the end-to-end deadline requirement. 
+Therefore, no feasible local deadline adjustment exists (line 18). 
+Algorithm Complexity: Let |𝑟𝑓 + | denote the length of the can-
+didate route 𝑟𝑓 + . Each port-level operation related to local deadline 
+calculation or bandwidth computation is considered a basic compu-
+tational unit in this analysis. In lines 1–3, the algorithm invokes the
+CalResBand function at each egress port to compute residual band-
+width. Since this function calculates bandwidth for all AVB classes, 
+the time complexity of this step is 𝑂(|𝑟𝑓 + | ⋅ 𝑁AVB). In lines 4–6, the 
+algorithm computes the minimum achievable local deadlines using the
+MapBand2D function at each egress port. As this function performs at 
+most 𝑁AVB−1 iterative computations and one local deadline calculation 
+per port, the time complexity of this step is 𝑂(|𝑟𝑓 + |⋅𝑁AVB). In lines 7–19, 
+the dominant computational cost arises from the binary approximation 
+loop employed to compute the optimal value of 𝛾. In each iteration, the 
+algorithm executes the MapBand2D function for each port along the 
+route and updates the 𝑠𝑙𝑎𝑐𝑘 value. Since the complexity of MapBand2D
+is 𝑂(𝑁AVB), the total cost per iteration is 𝑂(|𝑟𝑓 + | ⋅ 𝑁AVB). The binary 
+approximation involves at most 𝑁iter iterations. Therefore, the overall 
+time complexity of the algorithm is 𝑂(|𝑟𝑓 + | ⋅ 𝑁AVB ⋅ (𝑁iter + 2)), which 
+simplifies to 𝑂(|𝑟𝑓 + |⋅𝑁AVB⋅𝑁iter) by ignoring the constant term in the 
+asymptotic analysis. 
+6.2.1. Port-level calculating residual bandwidth
+In lines 2 of Algorithm 1, the CalResBand function computes the 
+available residual bandwidth 𝑅(𝑢,𝑣) at each egress port (𝑢, 𝑣) along the 
+route 𝑟𝑓 + . Specifically, the available residual bandwidth 𝑅(𝑢,𝑣) is given 
+by 
+𝑅(𝑢,𝑣) = 𝑖𝑑𝑆𝑙 max −
+𝑁AVB∑
+𝑗=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 , (14)
+where ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗  denotes the already allocated bandwidth to satisfy the 
+existing local deadlines. Compared to 𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗  in Eq. (9), which only 
+considers the existing flow set  , ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 (𝑗 ∈ [1 , 𝑁AVB]) additionally 
+includes the new flow 𝑓 +, and is defined as 
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 =
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+𝐷(𝑢,𝑣)
+𝑗 − 𝑙max
+𝐶 − (𝑗−1)𝑙max
+𝐶−∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘
+, (15)
+which is obtained by replacing  with  ∪ { 𝑓 +} in the first term of 
+Eq. (9). As described in Algorithm 1, in order to balance the residual 
+bandwidth across egress ports, this available residual bandwidth 𝑅(𝑢,𝑣)
+is used to determine the extra bandwidth required at each egress port 
+to adjust the local deadline 𝐷(𝑢,𝑣)
+𝑖 .
+6.2.2. Port-level mapping extra bandwidth to local deadline
+In Algorithm 1, the MapBand2D function is invoked at line 5 and 
+line 11 to compute the minimum adjusted local deadline for the target 
+class 𝑖 at a given port (𝑢, 𝑣) based on the given extra bandwidth 𝛾 ⋅𝑅(𝑢,𝑣). 
+In line 5, the function is called with the entire residual bandwidth 
+𝑅(𝑢,𝑣), while in line 11, it is called with a scaled value 𝛾 ⋅ 𝑅(𝑢,𝑣), where 
+0 < 𝛾 ≤ 1. Specifically, the function allocates the extra bandwidth 
+𝛾 ⋅𝑅(𝑢,𝑣) at port (𝑢, 𝑣) across all traffic classes in an optimal manner, such 
+that the bandwidth assigned to the target class 𝑖 is maximized under the 
+condition that the local deadlines of all other classes remain unchanged. 
+In this case, the minimum adjusted local deadline ̂𝐷(𝑢,𝑣)
+𝑖  is attained and 
+can be obtained based on the dependency between local deadlines and 
+bandwidth allocation, which is established through network calculus. 
+The correctness of this function is formally proven in Theorem  1.
+Theorem 1 (Mapping Extra Bandwidth to Local Deadline).  Consider a 
+new class-𝑖 flow 𝑓 + to be admitted along a candidate route 𝑟𝑓 + . For each 
+egress port (𝑢, 𝑣) ∈ 𝑟𝑓 + , assume that the existing flow set  and the existing 
+local deadlines 𝐷(𝑢,𝑣)
+𝑗  for all 𝑗 ∈ [1, 𝑁AVB] are given. The minimum adjusted 
+local deadline ̂𝐷(𝑢,𝑣)
+𝑖  for target class 𝑖 (to which 𝑓 + belongs), corresponding 
+to the extra bandwidth 𝛾 ⋅ 𝑅(𝑢,𝑣), is given by 
+̂𝐷(𝑢,𝑣)
+𝑖 =
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑖
+𝑏𝑓
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 + 𝛷𝑖
++ 𝑙max
+𝐶 + (𝑖 − 1)𝑙max
+𝐶 − ∑𝑖−1
+𝑗=1 ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗
+, (16)
+where ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗  represents the already allocated bandwidth for class 𝑗 at 
+egress port (𝑢, 𝑣) in Eq. (15). The term 𝛷𝑖 denotes the extra bandwidth 
+Journal of Systems Architecture 168 (2025) 103539 
+8 
+
+
+===== PAGE 9 =====
+S. Yu et al.
+allocated to class 𝑖 that depends on 𝛾 ⋅ 𝑅(𝑢,𝑣), determined by the recursive 
+relationship 
+𝑗−1∑
+𝑘=𝑖
+𝛷𝑘 = 𝑔
+( 𝑗∑
+𝑘=𝑖
+𝛷𝑘
+)
+, for 𝑖 < 𝑗 ≤ 𝑁AVB, (17)
+with 𝑔(⋅) defined in Lemma  1, and the initial term is 
+𝑁AVB∑
+𝑘=𝑖
+𝛷𝑘 = 𝛾 ⋅ 𝑅(𝑢,𝑣). (18)
+Proof.  Eq. (9) provides the minimum bandwidth allocation required 
+for each class to satisfy the local deadline constraints. Building on 
+this, Eq. (15) further incorporates the addition of the new flow 𝑓 +
+and determines the minimum required bandwidth allocation when the 
+existing local deadlines remain unchanged. Based on this result, we 
+further analyze how to adjust the local deadline of class 𝑖 using the 
+extra bandwidth 𝛾 ⋅ 𝑅(𝑢,𝑣).
+First, we prove that when the adjusted local deadline for class 
+𝑖 reaches its minimum value, the local deadlines 𝐷(𝑢,𝑣)
+𝑗  for all other 
+classes must remain unchanged. On the one hand, reducing 𝐷(𝑢,𝑣)
+𝑗  ne-
+cessitates allocating more bandwidth to class 𝑗 (𝑗 ≠ 𝑖), thereby limiting 
+the bandwidth available to class 𝑖 and preventing it from reaching its 
+minimum local deadline. On the other hand, increasing 𝐷(𝑢,𝑣)
+𝑗  could 
+violate the end-to-end deadline constraints of existing flows. Therefore, 
+keeping the local deadlines of other classes unchanged is a necessary 
+condition for minimizing the adjusted local deadline of class 𝑖.
+According to Eq. (15), when class 𝑖 is allocated an extra bandwidth 
+of 𝛷𝑖, each lower-priority class 𝑗 (𝑗 ∈ [ 𝑖 + 1 , 𝑁AVB]) must also be 
+allocated a corresponding amount of extra bandwidth 𝛷𝑗 in order 
+to maintain its existing local deadline 𝐷(𝑢,𝑣)
+𝑗 . We then show that the 
+minimum adjusted local deadline for class 𝑖 is achieved when the total 
+extra bandwidth satisfies ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘 = 𝛾 ⋅ 𝑅(𝑢,𝑣). As the adjusted local 
+deadline for class 𝑖 decreases in Eq. (15), the required bandwidth 𝛷𝑖
+increases, which in turn leads to an increase in the required bandwidth 
+𝛷𝑗 for all lower-priority classes 𝑗 (𝑗 ∈ [ 𝑖 + 1 , 𝑁AVB]). Therefore, the 
+adjusted local deadline for class 𝑖 exhibits a monotonically decreasing 
+relationship with the total required extra bandwidth ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘. Thus, 
+if ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘 exceeds the available extra bandwidth 𝛾 ⋅ 𝑅(𝑢,𝑣), the ad-
+justed local deadline cannot be satisfied. Conversely, if ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘 is 
+less than 𝛾 ⋅ 𝑅(𝑢,𝑣), the allocated bandwidth is underutilized, and the 
+adjusted local deadline is no longer minimized under the given extra 
+bandwidth constraint, leading to reduced resource efficiency. To ensure 
+both feasibility and efficiency, the extra bandwidth is allocated such 
+that ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘 = 𝛾 ⋅ 𝑅(𝑢,𝑣), which yields the minimum adjusted local 
+deadline ̂𝐷(𝑢,𝑣)
+𝑖 . 
+Furthermore, as observed from Eq. (15), the bandwidth allocation 
+for a given priority class depends only on the allocations of higher-
+priority classes and is independent of those with lower priorities. 
+Based on the interaction among different traffic classes, a recursive 
+relationship ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 = 𝑔
+(∑𝑗
+𝑘=𝑖 𝛷𝑘
+)
+ must be satisfied among the extra 
+bandwidth allocations to ensure that the existing local deadlines 𝐷(𝑢,𝑣)
+𝑗
+for all classes 𝑗 ≠ 𝑖 remain unchanged. This proposition is formally 
+stated and proven in Lemma  1. Finally, starting from the known value ∑𝑁AVB
+𝑘=𝑖 𝛷𝑘 = 𝛾 ⋅ 𝑅(𝑢,𝑣), any ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 (𝑖 < 𝑗 ≤ 𝑁AVB) can be derived from ∑𝑗
+𝑘=𝑖 𝛷𝑘 using the recursive relationship, which ultimately yields 𝛷𝑖. 
+Based on the obtained value of 𝛷𝑖, the minimum adjusted local deadline 
+̂𝐷(𝑢,𝑣)
+𝑖  is then determined by substituting ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖  with ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑖 + 𝛷𝑖 and 
+solving for ̂𝐷(𝑢,𝑣)
+𝑖  in Eq. (15), with its expression given in Eq. (16). □
+Next, we formally prove Lemma  1, which is used in the proof of 
+Theorem  1. According to Eq. (15), when adjusting the local deadline 
+𝐷(𝑢,𝑣)
+𝑖  of class 𝑖, the bandwidth allocation change for higher-priority 
+classes may impact lower-priority class 𝑗 (𝑗 ∈ [𝑖 + 1, 𝑁AVB]), potentially 
+causing its existing local deadline 𝐷(𝑢,𝑣)
+𝑗  to no longer be met. To address 
+this issue, Lemma  1 provides a recursive relationship that must be 
+satisfied when adjusting the local deadline 𝐷(𝑢,𝑣)
+𝑖  in order to ensure that 
+𝐷(𝑢,𝑣)
+𝑗  remains exactly satisfied.
+Lemma 1 (Recursive Relationship for Adjusting Local Deadline).  Let 𝛷𝑘
+denote the extra bandwidth allocated to class 𝑘 relative to ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘 . Assume 
+that a total extra bandwidth of ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 has already been allocated to 
+classes 𝑖 through 𝑗 − 1 at egress port (𝑢, 𝑣), and that the lower-priority 
+class 𝑗 consequently requires an extra bandwidth of 𝛷𝑗 to exactly meet its 
+existing local deadline 𝐷(𝑢,𝑣)
+𝑗 . Then, there exists a mapping from ∑𝑗
+𝑘=𝑖 𝛷𝑘 to 
+∑𝑗−1
+𝑘=𝑖 𝛷𝑘, given by 
+𝑗−1∑
+𝑘=𝑖
+𝛷𝑘 = 𝑔
+( 𝑗∑
+𝑘=𝑖
+𝛷𝑘
+)
+= −𝜉 −
+√
+𝜉2 − 4 ⋅ 𝜂 ⋅ 𝜁
+2 ⋅ 𝜂 , (19)
+where 
+𝜂 = 1 +
+(
+𝐶 − ∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘
+) ∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+(𝑗 − 1)𝑙max ⋅ ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗
+, (20)
+𝜉 = −𝜂
+𝑗∑
+𝑘=𝑖
+𝛷𝑘 − (𝜂 − 1)
+(
+𝐶 −
+𝑗−1∑
+𝑘=𝑖
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘
+)
+− ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 , (21)
+𝜁 = (𝜂 − 1)
+(
+𝐶 −
+𝑗−1∑
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘
+) 𝑗∑
+𝑘=𝑖
+𝛷𝑘. (22)
+Proof.  The known ∑𝑗
+𝑘=𝑖 𝛷𝑘 can be split into two parts, ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 and 
+𝛷𝑗 , with ∑𝑗
+𝑘=𝑖 𝛷𝑘 = ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 + 𝛷𝑗 . We first determine the relationship 
+between ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 and 𝛷𝑗 to meet the existing local deadline 𝐷(𝑢,𝑣)
+𝑗
+for low-priority class 𝑗. When the extra bandwidth ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 has been 
+allocated to classes 𝑖 through 𝑗 − 1 , extra bandwidth 𝛷𝑗 is required 
+for class 𝑗 to ensure that the existing local deadline 𝐷(𝑢,𝑣)
+𝑗  is satisfied. 
+The new bandwidth allocation for class 𝑗 is obtained by replacing ∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘  with ∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘 + ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 in Eq. (15). Since 𝛷𝑗 rep-
+resents the difference between the new bandwidth allocation and the 
+already allocated bandwidth ̄𝑖𝑑𝑆𝑙 𝑗 , the relationship between ∑𝑗−1
+𝑘=𝑖 𝛷𝑘
+and 𝛷𝑗 required to satisfy the existing local deadline 𝐷(𝑢,𝑣)
+𝑗  can be 
+expressed as 
+𝛷𝑗 =
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+𝐷(𝑢,𝑣)
+𝑗 − 𝑙max
+𝐶 − (𝑗−1)𝑙max
+𝐶−
+(∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘 +∑𝑗−1
+𝑘=𝑖 𝛷𝑘
+)
+− ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 . (23)
+We then derive the relationship between ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 and ∑𝑗
+𝑘=𝑖 𝛷𝑘. We 
+use ∑𝑗
+𝑘=𝑖 𝛷𝑘 = ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 + 𝛷𝑗 and combine it with the relationship 
+between ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 and 𝛷𝑗 from Eq. (23) to eliminate 𝛷𝑗 . Thus, we can 
+express the relationship as 
+𝑗∑
+𝑘=𝑖
+𝛷𝑘 −
+𝑗−1∑
+𝑘=𝑖
+𝛷𝑘 + ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 =
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+𝐷(𝑢,𝑣)
+𝑗 − 𝑙max
+𝐶 − (𝑗−1)𝑙max
+𝐶−
+(∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘 +∑𝑗−1
+𝑘=𝑖 𝛷𝑘
+)
+. (24)
+Additionally, to reduce the number of symbols used, we eliminate 𝐷(𝑢,𝑣)
+𝑗
+by solving for it using Eq. (15) and substituting it accordingly. This 
+gives the expression as 
+𝑗∑
+𝑘=𝑖
+𝛷𝑘 −
+𝑗−1∑
+𝑘=𝑖
+𝛷𝑘 + ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 =
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+∑
+𝑓 ∈( ∪{𝑓 +})(𝑢,𝑣)
+𝑗
+𝑏𝑓
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗
++ (𝑗−1)𝑙max
+𝐶−∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘
+− (𝑗−1)𝑙max
+𝐶−
+(∑𝑗−1
+𝑘=1
+̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑘 +∑𝑗−1
+𝑘=𝑖 𝛷𝑘
+)
+.
+(25)
+In Eq. (25), ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 appears on both sides of the equation. By rear-
+ranging the terms, we derive a polynomial equation involving ∑𝑗−1
+𝑘=𝑖 𝛷𝑘. 
+Thus, the relationship between ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 and ∑𝑗
+𝑘=𝑖 𝛷𝑘 to meet the exist-
+ing local deadline 𝐷(𝑢,𝑣)
+𝑗  for low-priority class 𝑗 is 
+𝜂
+(𝑗−1∑
+𝑘=𝑖
+𝛷𝑘
+)2
++ 𝜉
+(𝑗−1∑
+𝑘=𝑖
+𝛷𝑘
+)
++ 𝜁 = 0, (26)
+where the coefficients 𝜂, 𝜉, and 𝜁 associated with ∑𝑗
+𝑘=𝑖 𝛷𝑘 are given 
+in Eqs. (20), (21) and (22), respectively. Then, we attempt to find the 
+Journal of Systems Architecture 168 (2025) 103539 
+9 
+
+
+===== PAGE 10 =====
+S. Yu et al.
+Table 2
+Coefficients of baseline strategies.
+ Strategy EP LP ABP  
+ 𝜅(𝑢,𝑣) a 1
+|𝑟𝑓 + |
+b
+∑
+(𝑢′ ,𝑣′ )∈𝑟𝑓 + 𝐵(𝑢′ ,𝑣′ ) −𝐵(𝑢,𝑣)
+(|𝑟𝑓 + |−1) ∑
+(𝑢′ ,𝑣′ )∈𝑟𝑓 + 𝐵(𝑢′ ,𝑣′ )
+c 𝑅(𝑢,𝑣)
+∑
+(𝑢′ ,𝑣′ )∈𝑟𝑓 + 𝑅(𝑢′ ,𝑣′ )
+d 
+a 𝜅(𝑢,𝑣) denotes the proportion of the reduction in the existing local deadline at egress 
+port (𝑢, 𝑣) relative to the entire route 𝑟𝑓 + , where ̂𝐷(𝑢,𝑣)
+𝑖 = 𝐷(𝑢,𝑣)
+𝑖 − (∑
+(𝑢′ ,𝑣′ )∈𝑟𝑓 + 𝐷(𝑢′ ,𝑣′ )
+𝑖 −
+𝐷E2E
+𝑓 + ) ⋅ 𝜅(𝑢,𝑣).
+b |𝑟𝑓 + | denotes the length of route 𝑟𝑓 + .
+c 𝐵(𝑢,𝑣) = ∑
+𝑓 ∈( ∪{𝑓 + })(𝑢,𝑣) 𝜌𝑓 denotes the load at egress port (𝑢, 𝑣).
+d 𝑅(𝑢,𝑣) denotes the residual bandwidth at egress port (𝑢, 𝑣) as Eq. (14).
+solution for ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 in Eq. (26) within the feasible interval [0, ∑𝑗
+𝑘=𝑖 𝛷𝑘], 
+since ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 cannot exceed ∑𝑗
+𝑘=𝑖 𝛷𝑘. We let 𝑓 (𝑥) = 𝜂𝑥2 +𝜉𝑥+𝜁, and ob-
+serve that 𝜂 > 0, 𝑓 (0) = 𝜁 ≥ 0, and 𝑓 (∑𝑗
+𝑘=𝑖 𝛷𝑘) = − ̄𝑖𝑑𝑆𝑙 (𝑢,𝑣)
+𝑗 ⋅∑𝑗
+𝑘=𝑖 𝛷𝑘 ≤ 0. 
+Therefore, of the two solutions to Eq. (26), one lies within the interval 
+[0, ∑𝑗
+𝑘=𝑖 𝛷𝑘] and the other within [∑𝑗
+𝑘=𝑖 𝛷𝑘, ∞). Thus, Eq. (26) yields a 
+unique solution within the feasible interval [0, ∑𝑗
+𝑘=𝑖 𝛷𝑘], representing 
+the unique recursive relationship to obtain ∑𝑗−1
+𝑘=𝑖 𝛷𝑘 from the known ∑𝑗
+𝑘=𝑖 𝛷𝑘, as given by Eq. (19). □
+7. Experimental comparison and analysis
+In this section, we evaluate the performance of our proposed
+method. The evaluation metrics and comparison methods are intro-
+duced in Section 7.1. The comparison is conducted across both syn-
+thetic test cases (Section 7.2) and realistic test cases (Section 7.3). The 
+experiments are implemented in C++ and run on an Intel(R) Core(TM) 
+i5-1240P 64 bit CPU @1.7 GHz with 16 GB of RAM.
+7.1. Evaluation metrics and comparison methods
+To evaluate the performance of the proposed method, the following 
+metrics are considered:
+• Admitted flows: The total number of flows successfully admitted 
+from a set of flow requests, serving as an indicator of overall 
+resource utilization.
+• First rejection index: The index of the first flow request rejected 
+during the admission process, with a higher index indicating 
+greater adaptability to varying traffic demands.
+• Admission time: The computation time required to perform band-
+width allocation and make admission decisions for a set of flow 
+requests, serving as an indicator of responsiveness and computa-
+tional efficiency.
+• Per-flow admission time: The computation time obtained by divid-
+ing the total admission time by the number of flows in the request 
+set, reflecting the average computational overhead per flow.
+The proposed method is evaluated in comparison with the following 
+methods:
+• MDM-len and MDM-rem: These are online admission control meth-
+ods developed for the TSN/CBS architecture [14]. They ensure 
+real-time guarantees by setting fixed delay budgets on queues 
+and employing delay-constrained least-cost (DCLC) routing at 
+runtime. Specifically, MDM-len adopts a cost function based on 
+path length, while MDM-rem uses one based on the remaining 
+link rate.
+• EP, LP, and ABP: These are three baseline strategies introduced 
+in [38], namely equal partition (EP), load-based partition (LP), 
+and available bandwidth-based partition (ABP). The correspond-
+ing coefficients 𝜅(𝑢,𝑣) for (𝑢, 𝑣) ∈ 𝑟𝑓 + under these strategies are 
+listed in Table  2. For the comparison, we adopt the adjusted local 
+deadline ̂𝐷(𝑢,𝑣)
+𝑖 = 𝐷(𝑢,𝑣)
+𝑖 − (∑
+(𝑢′,𝑣′)∈𝑟𝑓 + 𝐷(𝑢′,𝑣′)
+𝑖 − 𝐷E2E
+𝑓 + ) ⋅ 𝜅(𝑢,𝑣) for the 
+baseline strategies in place of the output from Algorithm 1, while 
+the other parts follow the online admission control framework 
+outlined in Section 5.
+Fig. 7. An example of an Erdős–Rényi (ER) network with 22 switches, 110 end-systems, 
+and a link connection probability of 0.6.
+7.2. Synthetic test cases
+7.2.1. Experiment case setup
+The synthetic test cases are generated using different network 
+topologies and request flow sets. Network topologies are created us-
+ing the Erdős–Rényi (ER) model through NetworkX [39], a Python 
+library dedicated to creating complex networks. The ER model in-
+dependently includes each possible link connection between pairs of 
+switches with a probability 𝑝. We adopt link connection probabilities 
+𝑝 of {0.4, 0.5, 0.6, 0.7, 0.8}. Additionally, we use various topology scales 
+of {10SW50ES, 14SW70ES, 18SW90ES, 22SW110ES}. An example of 
+the 22SW110ES topology, which includes 22 switches (SWs) and 110 
+end systems (ESs), with a link connection probability of 𝑝 = 0 .6, 
+is shown in Fig.  7. The transmission rate of physical links is set to 
+𝐶 =100 Mb/s. Requested flow sets are generated in quantities of 
+{400, 500, 600, 700, 800}. Packet sizes for these flows range from 64 
+to 1518 bytes. To express the adaptability of the method to varying 
+minimum frame intervals and flow deadlines, the two parameters are 
+independently set within the range of 2 ms to 9 ms. Source and 
+destination nodes are randomly selected from the end-systems, ensuring 
+that the source and destination of a flow are not connected to the same 
+switch. The number of AVB classes 𝑁AVB is chosen from {1, 2, 4, 8}, 
+with flows distributed evenly across different classes according to their 
+deadlines. The upper limit of bandwidth allocated to all AVB classes at 
+the egress port, denoted as 𝑖𝑑𝑆𝑙 max, is set to 0.75𝐶. The maximum frame 
+size for BE traffic is set to 1518 bytes. The parameter 𝑘 for the k-shortest 
+candidate paths is set to 3. In order to evaluate the performance of the 
+admission control method, we set the offline flows to zero so that all 
+flows are dynamically admitted by the method. For each class level, 
+the initial local deadline is uniformly set as the ratio of the maximum 
+end-to-end deadline to the minimum route length within the class. For 
+example, when there are two AVB classes, the initial local deadlines are 
+5/2 = 2.5 ms and 9/2 = 4.5 ms, respectively, where 5 ms and 9 ms are 
+the maximum end-to-end deadlines for class 1 and class 2, and 2 is the 
+minimum route length. The initial bandwidth allocations are uniformly 
+set to zero.
+7.2.2. Comparison with the state-of-the-art
+To evaluate resource utilization, we compare our method with 
+state-of-the-art methods, namely MDM-len and MDM-rem [14] (see 
+Section 7.1). The evaluation considers two metrics: the number of 
+admitted flows and the first rejection index, as described in Section 7.1. 
+Comparisons are conducted across various experimental cases with 
+different link connection probabilities, topology scales, numbers of 
+requested flows, and numbers of AVB classes. Fig.  8(a)–(d) show the 
+comparative results, where each result is averaged over 10 independent 
+random instances. Fig.  8(a) shows the results for different link connec-
+tion probabilities 𝑝. Our method exhibits greater improvement over the 
+MDM method when the link connection probability 𝑝 is smaller. This is 
+because, at a smaller link connection probability 𝑝, the availability of 
+network resources is lower. Our method can better overcome these lim-
+itations compared to fixed delay budgets by adaptively assigning and 
+Journal of Systems Architecture 168 (2025) 103539 
+10 
+
+
+===== PAGE 11 =====
+S. Yu et al.
+Fig. 8. Comparison of our method with the state-of-the-art in terms of admitted flows.
+adjusting local deadlines, thus effectively increasing the flow admission 
+capacity. Fig.  8(b) indicates that as the topology scale expands, the 
+number of admitted flows increases for all methods. This growth is due 
+to expanding available network resources with increased physical links. 
+Fig.  8(c) shows that as the number of requested flows increases, the 
+admission ratio, which represents the percentage of admitted flows to 
+requested flows, decreases for all methods due to the limited available 
+network resources. Fig.  8(d) illustrates that as the number of AVB 
+classes increases, the number of admitted flows first increases and 
+then decreases. This trend suggests that assigning too many or too few 
+classes might not be optimal, making class assignments an interesting 
+topic for future discussion. In summary, across the 18 cases presented in 
+Fig.  8 (each comprising 10 independent random instances), our method 
+yields an average improvement of 44.6% over MDM-len and 69.8% 
+over MDM-rem in terms of admitted flows. In addition, our method 
+substantially postpones the occurrence of the first rejected flow relative 
+to the MDM methods, reflecting improved adaptability under dynamic 
+traffic conditions.
+7.2.3. Comparison of local deadline adjustment strategies
+To evaluate the effectiveness of our local deadline adjustment strat-
+egy proposed in Section 6, we compare it with three baseline strategies 
+from [38]: equal partition (EP), load-based partition (LP), and available 
+bandwidth-based partition (ABP), as described in Section 7.1. The 
+evaluation considers the number of admitted flows (see Section 7.1) 
+using the same experimental cases as in Section 7.2.2. Fig.  9(a)–(d) 
+displays the experimental results, where each result is averaged over 
+10 independent random instances. It shows that our strategy achieves 
+an average increase in the number of admitted flows by 30.1%, 23.8%, 
+and 25.8% compared to the EP, LP, and ABP strategies, respectively. 
+The EP strategy leads to the lowest number of admitted flows because 
+it uniformly reduces local deadlines to meet the new flow deadline 
+without considering the specific characteristics of the existing net-
+work configuration. The LP and ABP outperform EP because they 
+indirectly incorporate residual bandwidth balancing into their strate-
+gies by utilizing the proportions of traffic load and available residual 
+bandwidth, respectively. Our strategy outperforms others because it 
+iteratively finds an adjustment that ensures the extra bandwidths are 
+allocated according to the proportion of available residual bandwidths 
+between egress ports. This approach directly balances the residual 
+bandwidth across egress ports, preventing some egress ports from 
+becoming bottlenecks too early due to resource exhaustion.
+7.2.4. Execution time
+To evaluate efficiency and scalability, we compare our method 
+with the state-of-the-art MDM-len and MDM-rem [14], as described in 
+Section 7.1. The evaluation focuses on admission time (see Section 7.1) 
+across experimental cases with varying numbers of requested flows and 
+topology sizes. Fig.  10(a)–(b) demonstrate the experimental results 
+using box plots, where each box corresponds to 10 independent random 
+instances and the red marker represents the mean value. Fig.  10(a) 
+illustrates that the admission time for each method increases linearly 
+with the number of requested flows. Specifically, for our method, the 
+average admission times for admitting 50, 100, 150, and 200 flows are 
+2.7 ms, 5.4 ms, 8.0 ms, and 10.6 ms, respectively. Compared to the 
+MDM methods, our method exhibits a markedly slower growth rate, 
+indicating a significant decrease in the per-flow admission time. Fig. 
+10(b) displays the admission time for three methods across various 
+topology scales. For our method, the average admission times for 
+admitting 50 flows are 1.4 ms, 1.7 ms, 2.2 ms, and 2.7 ms, respectively. 
+Compared to the MDM methods, our method demonstrates a smaller 
+rise in admission time as the topology scale grows. In summary, for 
+the 8 cases shown in Fig.  10 (each with 10 independent random 
+instances), our method achieves an average reduction in admission 
+time of 94.5% and 94.7% when compared to the MDM-len and MDM-
+rem methods, respectively. The per-flow admission time for large-scale 
+scenarios involving 22SW110ES achieves less than 100 μs .
+Finally, we analyze the time complexity of the two methods. Let | |
+denote the number of nodes, || the number of links, 𝑀 the maximum 
+path length in the network, 𝑁AVB the number of AVB classes, 𝑄 the 
+network degree, and 𝑘 the number of candidate paths selected by the 
+𝑘-shortest path algorithm. In this analysis, each port-level operation 
+involved in local deadline calculation, bandwidth computation, or path 
+evaluation is considered a basic computational unit.
+For our method, the time complexity is analyzed by evaluating 
+the computational cost associated with each of the 𝑘 candidate paths 
+Journal of Systems Architecture 168 (2025) 103539 
+11 
+
+
+===== PAGE 12 =====
+S. Yu et al.
+Fig. 9. Comparison of our local deadline adjustment strategy in Section 6.1 with the baseline strategies in terms of admitted flows.
+Fig. 10. Comparison of our method with the state-of-the-art in terms of admission time. (For interpretation of the references to color in this figure legend, the reader is referred 
+to the web version of this article.)
+independently. For a single path, local deadline adjustment and band-
+width allocation are performed separately. As analyzed in Section 6.2, 
+local deadline adjustment has a time complexity of 𝑂(𝑀 ⋅𝑁AVB⋅𝑁iter), 
+where 𝑀 denotes the maximum path length in the network. Bandwidth 
+allocation is carried out once for each AVB class at every port along the 
+path, resulting in an additional complexity of 𝑂(𝑀⋅𝑁AVB). Accordingly, 
+when all 𝑘 candidate paths are considered, the overall time complexity 
+of our method is 𝑂(𝑘⋅𝑀⋅𝑁iter⋅𝑁AVB+𝑘⋅𝑀⋅𝑁AVB). Since 𝑁iter ≫ 1 in typical 
+configurations, the expression can be simplified to 𝑂(𝑘⋅𝑀 ⋅𝑁iter⋅𝑁AVB).
+The MDM method employs a delay-constrained least-cost (DCLC) 
+routing algorithm to generate up to 𝑘 paths, with a time complexity of 
+𝑂(𝑘⋅(| |⋅log(| |)+||)) [40,41]. In addition to the routing process, the 
+method performs bandwidth allocation along up to 𝑘 paths. For each 
+path (with a maximum length of 𝑀), bandwidth is allocated at each 
+port for all AVB classes. At each port, link shaping and CBS shaping 
+information from up to 𝑄 predecessor ports is separately considered, 
+leading to up to 2𝑄 bandwidth allocation computations per class. As 
+a result, the time complexity of this component is 𝑂(𝑘 ⋅ 𝑀 ⋅ 𝑁AVB ⋅ 𝑄). 
+Therefore, the overall time complexity of the MDM method is 𝑂(𝑘⋅(| |⋅
+log(| |) + || + 𝑀 ⋅𝑁AVB⋅𝑄)). 
+In summary, our method eliminates the computational overhead 
+associated with global routing and the consideration of shaping curves 
+Table 3
+Overview of network configuration characteristics.
+ Case Nodes Switches Links Link speeds  
+ Automotive system [42] 14 5 18 1 Gb/s (DM3↔ SW3)
+100 Mb/s(others)
+ 
+ Space launcher [43] 18 18 24 100 Mb/s  
+ Orion CEV [44] 31 15 55 1 Gb/s  
+during bandwidth allocation. Moreover, the additional computational 
+cost introduced by the adaptive local deadline adjustment algorithm 
+remains limited. As a result, our method demonstrates lower time 
+complexity and better scalability in large-scale, dynamic network en-
+vironments.
+7.3. Realistic test cases
+7.3.1. Comparison in realistic test cases
+We compare different methods across three realistic test cases. The 
+methods consist of our method, MDM-len, MDM-rem, EP, LP, and ABP, 
+as described in Section 7.1. The three realistic test cases are the Auto-
+motive System [42], Space Launcher [43], and Orion CEV [44]. Their 
+Journal of Systems Architecture 168 (2025) 103539 
+12 
+
+
+===== PAGE 13 =====
+S. Yu et al.
+Fig. 11. Topologies of three realistic test cases.
+Table 4
+Flows in the automotive system case.
+ Class Size (B) Min
+frame
+interval
+(μs)
+Deadline 
+(μs)
+Src Dst Proportion 
+ A 256–1024 10 000 10 000 ECU DM 40.8%  
+ B 128 or 256 10 000 10 000 CAM DM 29.6%  
+ 
+C
+1446 1100 30 000 CAM1 DM1 3.7%  
+ 1446 1100 30 000 CAM2 DM1 3.7%  
+ 1446 1100 30 000 CAM3 DM2 3.7%  
+ 1446 1100 30 000 CAM4 DM2 3.7%  
+ 1446 1100 30 000 CAM4 Display1 3.7%  
+ 1446 1100 30 000 CAM4 Display2 3.7%  
+ D 1446 1100 30 000 CAM4 DM3 7.4%  
+Table 5
+Flows in the space launcher case.
+ Class Size (B) Minimum frame
+interval (μs)
+Deadline (μs) Proportion 
+ A 256–1024 10 000 10 000 21%  
+ B 128 or 256 10 000 10 000 78%  
+ C 1446 1100 30 000 1%  
+topologies and network configuration characteristics are presented in 
+Fig.  11 and Table  3. The attributes of the requested flow sets used for 
+admission control are listed in Tables  4, 5, and 6, which are derived 
+from real-world cases. A request set containing 10 000 flows is used to 
+evaluate the number of admitted flows and the first rejection index (see 
+Section 7.1). This large-scale flow set allows the admission capabilities 
+and performance differences of each method to be fully revealed as the 
+network load gradually increases. In contrast, a separate request set 
+containing 100 flows is used to evaluate the per-flow admission time 
+(see Section 7.1). This smaller set ensures a high admission success rate, 
+helping to avoid the underestimation of admission time that may result 
+Table 6
+Flows in the orion CEV case.
+ Class Size (B) Minimum frame
+interval (μs)
+Deadline (μs) Proportion 
+ 
+A
+64–1518 4000 6800–7300 6%  
+ 64–1518 8000 8700–15 000 14%  
+ 64–1518 16 000 16 000–30 000 9%  
+ 
+B
+64–1518 16 000 17 000–32 000 13%  
+ 64–1518 32 000 34 000–62 000 14%  
+ 64–1518 64 000 67 000–68 000 2%  
+ C 64–1518 64 000 70 000–130 000 24%  
+ 64–1518 128 000 170 000–190 000 3%  
+ D 64–1518 128 000 170 000–370 000 15%  
+from frequent rejections under heavy network load. For all three cases, 
+the upper bandwidth limit allocated to all AVB classes at the egress 
+port is set to 𝑖𝑑𝑆𝑙 max = 0.75𝐶. The comparison results are summarized 
+in Table  7.
+First, our method is compared with MDM-len and MDM-rem meth-
+ods. In terms of admitted flows, our method shows improvements 
+across all three test cases, with a remarkable increase of 70% observed 
+in the Space Launcher case. For the first rejection index, our method 
+also demonstrates improvement, with performance increasing by up 
+to 75% in the Orion CEV case. Regarding per-flow admission time, 
+our method reduces the time by over 79% compared to MDM-len. 
+Additionally, even in large-scale scenarios, the per-flow admission time 
+of our method is less than 100 μs . These results indicate that, with 
+ATS support, our method dynamically adjusts local deadlines to bal-
+ance residual bandwidth, thereby optimizing resource utilization and 
+enhancing adaptability. Furthermore, our method avoids online routing 
+and reduces computational overhead during the adjustment process 
+by leveraging analytical results to reduce the solution space, thereby 
+improving admission time.
+Next, our method is compared with EP, LP, and ABP, which use 
+different local deadline adjustment strategies. For admitted flows, our 
+method demonstrates improvements across all three test cases, with an 
+increase of over 165% in the Orion CEV case. In terms of first rejection 
+index, our method performs similarly to the EP and LP methods in 
+the Automotive System case but shows significant improvements in the 
+large-scale scenarios of Space Launcher and Orion CEV. In the Space 
+Launcher case, the first rejection for EP, LP, and ABP occurs at the 9th 
+flow, while our method postpones it until the 218th flow. In the Orion 
+CEV case, the first rejection for EP, LP, and ABP happens at the 21st 
+flow, while our method postpones it until the 3588th flow. Regarding 
+per-flow admission time, our method shows an increase compared to 
+EP, LP, and ABP, as the bandwidth-balancing local deadline adjustment 
+strategy employed in our method introduces additional computational 
+overhead. Despite the increase, the admission times remain within the 
+same order of magnitude (e.g., tens of microseconds), as our method 
+reduces the solution space through analytical results, which acceler-
+ates the solving process. In summary, compared to the EP, LP, and 
+ABP methods that directly adjust local deadlines, our method adjusts 
+local deadlines by balancing the remaining bandwidth. Although this 
+introduces some additional admission time overhead, it significantly 
+improves admission capacity and postpones the occurrence of the first 
+rejection of the flow requests. Particularly in large-scale scenarios, our 
+method significantly increases the number of consecutive admissions, 
+demonstrating enhanced adaptability.
+7.3.2. In-depth comparison in the orion CEV case
+We conduct an in-depth comparison of different methods in the 
+Orion CEV case, focusing on the distribution of successful admitted 
+flows and bottleneck egress port counts during the admission process. 
+The experiment uses a request flow set comprising 6000 flows, which 
+are divided into 120 flow groups, each containing 50 flows. For each 
+Journal of Systems Architecture 168 (2025) 103539 
+13 
+
+
+===== PAGE 14 =====
+S. Yu et al.
+Table 7
+Comparison in three realistic test cases.
+ Case Metric Our 
+method
+MDM-len MDM-rem EP LP ABP  
+ 
+Automotive system [42]
+Admitted flows 217
+(+28%)
+170
+(0%)
+170
+(0%)
+170
+(0%)
+194
+(+14%)
+126
+(−26%)
+ 
+ First rejection index 48
+(+2%)
+47 
+(0%)
+47
+(0%)
+48
+(+2%)
+48 
+(+2%)
+6 
+(−87%)
+ 
+ Per-flow admission time 13.3 μs
+(−90%)
+137.7 μs
+(0%)
+90.4 μs
+(−34%)
+11.1 μs
+(−92%)
+9.67 μs
+(−93%)
+11.1 μs
+(−92%)
+ 
+ 
+Space launcher [43]
+Admitted flows 701 
+(+70%)
+412 
+(0%)
+418
+(+1%)
+557
+(+35%)
+540
+(+31%)
+383
+(−7%)
+ 
+ First rejection index 218 
+(+37%)
+159 
+(0%)
+121
+(−24%)
+9
+(−94%)
+9
+(−94%)
+9
+(−94%)
+ 
+ Per-flow admission time 70.0 μs
+(−88%)
+565.4 μs
+(0%)
+581.6 μs
+(+2%)
+30.1 μs
+(−95%)
+56.7 μs
+(−90%)
+69.5 μs
+(−88%)
+ 
+ 
+Orion CEV [44]
+Admitted flows 5653
+(+18%)
+4789 
+(0%)
+4293 
+(−10%)
+2000
+(−58%)
+2126
+(−56%)
+1969
+(−59%)
+ 
+ First rejection index 3588
+(+75%)
+2047 
+(0%)
+1449
+(−29%)
+21
+(−99%)
+21
+(−99%)
+21
+(−99%)
+ 
+ Per-flow admission time 78.3 μs
+(−79%)
+370.1 μs
+(0%)
+420.2 μs
+(+14%)
+24.5 μs
+(−93%)
+25.7 μs
+(−93%)
+32.2 μs
+(−91%)
+ 
+* The baseline for comparison is the state-of-the-art MDM-len method.
+Fig. 12. Comparison of distribution in successful admission flows and bottleneck egress port count in Orion CEV case. (For interpretation of the references to color in this figure 
+legend, the reader is referred to the web version of this article.)
+flow group, two metrics are recorded when the admission decision for 
+the last flow in the group is completed: the number of successful admit-
+ted flows within the group and the number of bottleneck egress ports 
+in the network. A bottleneck egress port is defined as an egress port 
+where the available residual bandwidth is less than 10% of 𝑖𝑑𝑆𝑙 max, 
+where 𝑖𝑑𝑆𝑙 max is the upper bandwidth limit allocated to all AVB classes 
+at the egress port. The comparison results are shown in Fig.  12, where 
+each subplot corresponds to a different method. In each subplot, the 
+𝑥-axis represents the index of the flow groups requesting admission. 
+The blue points indicate the number of successful admitted flows in the 
+corresponding flow group (ranging from 0 to 50), and the red points 
+represent the number of bottleneck egress ports.
+From the comparison results in Fig.  12, it is observed that our 
+method postpones the appearance of bottleneck egress ports until the 
+65th flow group. In comparison, MDM-len reaches this point in the 
+26th group, MDM-rem in the 24th group, EP in the 13th group, LP in 
+the 9th group, and ABP in the 8th group. Further observation of the 
+admitted flows reveals that, after the appearance of bottleneck egress 
+ports, our method, MDM-len, and MDM-rem begin to fail to admit all 50 
+flows as the egress ports gradually become unavailable. Additionally, 
+as the number of bottleneck egress ports increases, the admission ratio 
+within each flow group shows a decreasing trend. Overall, our method 
+enhances admission capacity and delays the first rejection of flow 
+requests by effectively postponing the occurrence of bottleneck egress 
+ports. The EP, LP, and ABP methods are unable to admit all 50 flows 
+even before bottleneck egress ports appear. This is because the local 
+deadlines determined by their direct deadline adjustment strategies 
+cannot be guaranteed within the available residual bandwidth, leading 
+to the rejection of some flows. In contrast, our method avoids this issue 
+by using a local deadline adjustment strategy that balances the residual 
+bandwidth, thereby postponing the first rejection of flow requests and 
+achieving higher admission capacity.
+Journal of Systems Architecture 168 (2025) 103539 
+14 
+
+
+===== PAGE 15 =====
+S. Yu et al.
+8. Conclusion
+In this work, we propose a rapid, scalable, and high-utilization on-
+line admission control method for time-critical ET traffic based on the 
+TSN/ATS+CBS architecture. Experimental results from both synthetic 
+and realistic test cases demonstrate that, compared to the state-of-the-
+art, our method increases the number of admitted flows by an average 
+of 56% and reduces admission time by an average of 92%. Addition-
+ally, evaluations show that our method postpones the occurrence of 
+bottleneck egress ports and the first rejection of admission requests, 
+thus improving adaptability. While this paper focuses on centralized 
+admission control, future work may explore distributed solutions to 
+reduce dependency on the centralized controller and more effectively 
+support scalability in large-scale, decentralized TSN environments.
+CRediT authorship contribution statement
+Sifan Yu: Writing – original draft, Visualization, Methodology, 
+Formal analysis. Feng He: Writing – review & editing, Methodology, 
+Funding acquisition. Anlan Xie: Writing – review & editing, Visual-
+ization, Validation, Methodology. Luxi Zhao: Writing – review & edit-
+ing, Supervision, Conceptualization, Methodology, Funding acquisition, 
+Project administration.
+Declaration of competing interest
+The authors declare that they have no known competing finan-
+cial interests or personal relationships that could have appeared to 
+influence the work reported in this paper.
+Acknowledgments
+This work was supported in part by the National Natural Sci-
+ence Foundation of China under Grant 62302028, U2333213, and in 
+part by the Aeronautical Science Foundation of China under Grant 
+2023Z021051001.
+Data availability
+Data will be made available on request.
+References
+[1] Z. Satka, M. Ashjaei, H. Fotouhi, M. Daneshtalab, M. Sjödin, S. Mubeen, A 
+comprehensive systematic review of integration of time sensitive networking and 
+5G communication, J. Syst. Archit. 138 (2023) 102852.
+[2] M. Haeberle, F. Heimgaertner, H. Loehr, N. Nayak, D. Grewe, S. Schildt, 
+M. Menth, Softwarization of automotive e/e architectures: a software-defined 
+networking approach, in: VNC, 2020.
+[3] Stream reservation protocol (SRP) enhancements and performance improvements, 
+2018, URL https://1.ieee802.org/tsn/802-1qcc/.
+[4] Enhancements for scheduled traffic, 2016, URL http://www.ieee802.org/1/
+pages/802.1bv.html.
+[5] IEEE standard for local and metropolitan area networks - bridges and bridged 
+networks, 2018, URL https://standards.ieee.org/ieee/802.1Q/6844/.
+[6] Forwarding and queuing enhancements for time-sensitive streams, 2009, URL 
+https://www.ieee802.org/1/pages/802.1av.html.
+[7] IEEE standard for local and metropolitan area networks - bridges and bridged 
+networks amendment: Asynchronous traffic shaping, 2018, URL https://1.
+ieee802.org/tsn/802-1qcr/.
+[8] J.A.R. De Azua, M. Boyer, Complete modelling of AVB in network calculus 
+framework, in: RTNS, 2014.
+[9] M. Ashjaei, G. Patti, M. Behnam, T. Nolte, G. Alderisi, L. Lo Bello, Schedulability 
+analysis of ethernet audio video bridging networks with scheduled traffic support, 
+Real-Time Syst. 53 (4) (2017) 526–577.
+[10] L. Zhao, P. Pop, Z. Zheng, H. Daigmorte, M. Boyer, Latency analysis of multiple 
+classes of AVB traffic in TSN with standard credit behavior using network 
+calculus, IEEE Trans. Ind. Electron. 68 (10) (2021) 10291–10302.
+[11] N. Reusch, L. Zhao, S.S. Craciunas, P. Pop, Window-based schedule synthesis for 
+industrial IEEE 802.1qbv TSN networks, in: WFCS, 2020.
+[12] S.M. Laursen, P. Pop, W. Steiner, Routing optimization of AVB streams in TSN 
+networks, SIGBED Rev. 13 (4) (2016) 43–48.
+[13] L. Zhao, Y. Yan, X. Zhou, Minimum bandwidth reservation for CBS in TSN with 
+real-time QoS guarantees, IEEE Trans. Ind. Inf. 20 (4) (2024) 6187–6198.
+[14] L. Maile, K.-S.J. Hielscher, R. German, Delay-guaranteeing admission control for 
+time-sensitive networking using the credit-based shaper, IEEE Open J. Commun. 
+Soc. 3 (2022) 1834–1852.
+[15] L. Deng, G. Xie, H. Liu, Y. Han, R. Li, K. Li, A survey of real-time ethernet 
+modeling and design methodologies: from AVB to TSN, ACM Comput. Surv. 55 
+(2) (2023) 1–36.
+[16] Cyclic queuing and forwarding, 2015, URL https://1.ieee802.org/tsn/802-1qch/.
+[17] T. Zhang, G. Wang, C. Xue, J. Wang, M. Nixon, S. Han, Time-sensitive networking 
+(TSN) for industrial automation: current advances and future directions, ACM 
+Comput. Surv. 57 (2) (2025) 1–38.
+[18] N.G. Nayak, F. Dürr, K. Rothermel, Time-sensitive software-defined network 
+(TSSDN) for real-time applications, in: RTNS, 2016.
+[19] N.G. Nayak, F. Durr, K. Rothermel, Incremental flow scheduling and routing 
+in time-sensitive software-defined networks, IEEE Trans. Ind. Inf. 14 (5) (2018) 
+2066–2075.
+[20] A. Alnajim, S. Salehi, C.-C. Shen, Incremental path-selection and scheduling for 
+time-sensitive networks, in: GLOBECOM, 2019.
+[21] Y. Huang, S. Wang, T. Huang, B. Wu, Y. Wu, Y. Liu, Online routing and 
+scheduling for time-sensitive networks, in: ICDCS, 2021.
+[22] Z. Feng, Z. Gu, H. Yu, Q. Deng, L. Niu, Online rerouting and rescheduling of 
+time-triggered flows for fault tolerance in time-sensitive networking, IEEE Trans. 
+Comput.-Aided Des. Integr. Circuits Syst. 41 (11) (2022) 4253–4264.
+[23] C. Gärtner, A. Rizk, B. Koldehofe, R. Guillaume, R. Kundel, R. Steinmetz, 
+Fast incremental reconfiguration of dynamic time-sensitive networks at runtime, 
+Comput. Netw. 224 (2023) 109606.
+[24] Y. Huang, S. Wang, X. Zhang, T. Huang, Y. Liu, Flexible cyclic queuing and 
+forwarding for time-sensitive software-defined networks, IEEE Trans. Netw. Serv. 
+Manag. 20 (1) (2023) 533–546.
+[25] K. Cao, F. Yang, PRIS: online routing and scheduling making CQF flexible in 
+dynamic time-sensitive networks, in: ICCC, 2023.
+[26] S.S. Craciunas, R.S. Oliver, M. Chmelík, W. Steiner, Scheduling real-time 
+communication in IEEE 802.1qbv time sensitive networks, in: RTNS, 2016.
+[27] V. Gavrilut, P. Pop, Scheduling in time sensitive networks (TSN) for 
+mixed-criticality industrial applications, in: WFCS, 2018.
+[28] E. Li, F. He, Q. Li, H. Xiong, Bandwidth allocation of stream-reservation traffic 
+in TSN, IEEE Trans. Netw. Serv. Manag. 19 (1) (2022) 741–755.
+[29] P. Pop, K. Alexandris, T. Wang, Configuration of multi-shaper time-sensitive 
+networking for industrial applications, IET Networks 13 (5–6) (2024) 434–454.
+[30] L. Zhao, X. Zhang, H. Feng, Z. Li, Incremental performance analysis for 
+accelerating verification of TSN network reconfigurations, IEEE Trans. Netw. 
+Serv. Manag. (2024) 1–16.
+[31] J.W. Guck, M. Reisslein, W. Kellerer, Function split between delay-constrained 
+routing and resource allocation for centrally managed QoS in industrial networks, 
+IEEE Trans. Ind. Inf. 12 (6) (2016) 2050–2061.
+[32] J. Specht, S. Samii, Urgency-based scheduler for time-sensitive switched ethernet 
+networks, in: ECRTS, 2016.
+[33] E. Mohammadpour, E. Stai, M. Mohiuddin, J.-Y. Le Boudec, Latency and backlog 
+bounds in time-sensitive networking with credit based shapers and asynchronous 
+traffic shaping, in: ITC, 2018.
+[34] J. Specht, S. Samii, Synthesis of queue and priority assignment for asynchronous 
+traffic shaping in switched ethernet, in: RTSS, 2017.
+[35] J.-Y. Le Boudec, P. Thiran, Network calculus: A theory of deterministic queuing 
+systems for the internet, in: Springer-Verlag Lecture Notes on Computer Science, 
+Springer, New York, 2001, no. 2050.
+[36] J.-Y. Le Boudec, A theory of traffic regulators for deterministic networks with 
+application to interleaved regulators, IEEE/ACM Trans. Netw. 26 (6) (2018) 
+2721–2733.
+[37] J.Y. Yen, Finding the k shortest loopless paths in a network, Manag. Sci. 17 (11) 
+(1971) 712–716, arXiv:2629312.
+[38] A. Sahoo, Z. Wei, J. Weijia, Partition-based admission control in heterogeneous 
+networks for hard real-time connections, in: ICPDC, 1997.
+[39] A.A. Hagberg, D.A. Schult, P.J. Swart, Exploring network structure, dynamics, 
+and function using networkx, in: SciPy, 2008.
+[40] N. Katoh, T. Ibaraki, H. Mine, An efficient algorithm for k shortest simple paths, 
+Netw. 12 (4) (1982) 411–427.
+[41] R.K. Ahuja, K. Mehlhorn, J. Orlin, R.E. Tarjan, Faster algorithms for the shortest 
+path problem, J. ACM 37 (2) (1990) 213–223.
+[42] J. Migge, J. Villanueva, N. Navet, M. Boyer, Insights on the performance and 
+configuration of AVB and TSN in automotive ethernet networks, in: ERTS, 2018.
+[43] P. Keller, N. Navet, Approximating WCRT through the aggregation of short 
+simulations with different initial conditions: Application to TSN, in: RTNS, 2022.
+[44] D. Tamas–Selicean, Design of Mixed-Criticality Applications on Distributed Real-
+Time Systems (Ph.D. thesis), Dept. Appl. Math. and Comp. Sci., Technical Univ. 
+of Denmark, Kongens Lyngby, DK, 2014.
+Journal of Systems Architecture 168 (2025) 103539 
+15 
+
+
+===== PAGE 16 =====
+S. Yu et al.
+Sifan Yu received the B.S. degree in electronic and in-
+formation engineering from Beihang University, Beijing, 
+China, in 2019. She is currently pursuing a Ph.D. degree 
+in communication and information systems at Beihang Uni-
+versity. Her research focuses on the performance analysis 
+and configuration optimization in real-time networking.
+Feng He received the Ph.D. degree in communication 
+and information systems from Beihang University, Beijing, 
+China, in 2009. He is a Professor with the School of 
+Electronics and Information Engineering, Beihang Univer-
+sity. His research interests include real-time networking and 
+scheduling, and avionics systems. He is a Member of the 
+Avionics and Air Traffic Control Branch of China Society of 
+Aeronautics and Astronautics.
+Anlan Xie received the B.S. degree in electronic and infor-
+mation engineering from Beihang University, Beijing, China, 
+in 2022. He is currently pursuing an M.S. degree in com-
+munication engineering at Beihang University. His research 
+focuses on the performance analysis and configuration 
+optimization in real-time systems.
+Luxi Zhao is an Associated Professor of Communication 
+and Information System at Electronic Information Engi-
+neering College, Beihang University. She is also a guest 
+scientist at the Technical University of Munich (TUM). She 
+received her Ph.D. in communication and information sys-
+tems from the Beihang University, Beijing, China, in 2017. 
+She was a postdoc at DTU Compute, Technical University 
+of Denmark (DTU) from 2017 to 2019. She has been 
+a Marie-Curie research fellow at department of Electrical 
+and Computer Engineering, Technical University of Munich 
+(TUM). Her main research interest concerns worst-case anal-
+ysis and performance evaluation of deterministic real-time 
+and safety-critical networks.
+Journal of Systems Architecture 168 (2025) 103539 
+16 
