@@ -20,15 +20,34 @@
 import argparse
 import json
 import os
+import sys
 from dataclasses import replace
+from pathlib import Path
 
 from run_rule_compare import default_rule_params, load_cfg, run_once, strip_large
+from src.provenance import build_provenance
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "results")
 TRAFFIC_CONFIG = os.path.join(ROOT, "config", "traffic_literature.yaml")
 SCENARIO_CONFIG = os.path.join(ROOT, "config", "scenario_literature.yaml")
+
+
+def build_calibration_provenance(deadline_profile: str, seed: int, argv) -> dict:
+    root = Path(ROOT)
+    return build_provenance(
+        root=root,
+        entry_script=Path(__file__).resolve(),
+        seed=seed,
+        deadline_profile=deadline_profile,
+        config_paths=[Path(TRAFFIC_CONFIG), Path(SCENARIO_CONFIG)],
+        source_paths=list((root / "src").glob("*.py")) + [
+            root / "experiments" / "run_rule_compare.py",
+            Path(__file__).resolve(),
+        ],
+        argv=argv,
+    )
 
 
 def build_variants(ats: dict, deadline_default: float):
@@ -77,7 +96,7 @@ def score(result: dict) -> tuple:
     )
 
 
-def run_calibration(deadline_profile: str) -> dict:
+def run_calibration(deadline_profile: str, seed: int = 42, argv=()) -> dict:
     traffic_cfg = load_cfg(TRAFFIC_CONFIG)
     scenario_cfg = load_cfg(SCENARIO_CONFIG)
     ats = traffic_cfg["ats"]
@@ -89,7 +108,7 @@ def run_calibration(deadline_profile: str) -> dict:
         print(f"[{deadline_profile}] Running {label}: {description}")
         result = run_once(label, True, traffic_cfg, scenario_cfg,
                           static_low["cir"], static_low["cbs"], deadline_profile,
-                          rule_params=params)
+                          rule_params=params, seed=seed)
         compact = compact_result(result)
         compact["variant_description"] = description
         compact["calibration_score"] = list(score(compact))
@@ -97,6 +116,8 @@ def run_calibration(deadline_profile: str) -> dict:
 
     ranked = sorted(results, key=score)
     return {
+        "schema_version": "preliminary-ats-poc-v1",
+        "provenance": build_calibration_provenance(deadline_profile, seed, argv),
         "note": (
             "Preliminary single-hop Python simulation. This is a small Rule-Based "
             "parameter calibration/ablation experiment before OMNeT++ migration; it is "
@@ -152,6 +173,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Preliminary Rule-Based calibration experiment")
     parser.add_argument("--deadline-profile", choices=["strict", "relaxed"], default="relaxed")
     parser.add_argument("--all-profiles", action="store_true")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for BE arrivals and ET burst offsets (default: 42).",
+    )
     return parser.parse_args()
 
 
@@ -159,7 +186,7 @@ def main():
     args = parse_args()
     profiles = ["relaxed", "strict"] if args.all_profiles else [args.deadline_profile]
     for profile in profiles:
-        data = run_calibration(profile)
+        data = run_calibration(profile, seed=args.seed, argv=sys.argv[1:])
         path = save_result(data)
         print_summary(data, path)
 

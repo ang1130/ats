@@ -9,6 +9,7 @@ text{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
 .note{font-size:11px;fill:#898781}
 </style>
 <rect width="100%" height="100%" fill="#fcfcfb" rx="14"/>
+<metadata>preliminary-ats-poc; profile=relaxed; seed=42; source_run_id=2673fe764579b28c</metadata>
 <text class="title" x="40" y="38">Rule-Based CIR/CBS trajectory — relaxed</text>
 <text class="subtitle" x="40" y="60">Online rule updates compared with Offline-Optimized static reference</text>
 <text class="label" x="72" y="92">CIR (Mbps)</text>
@@ -110,5 +111,5 @@ text{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
 <text class="axis" x="542.0" y="586" text-anchor="middle">1.0s</text>
 <text class="axis" x="777.0" y="586" text-anchor="middle">1.5s</text>
 <text class="axis" x="1012.0" y="586" text-anchor="middle">2.0s</text>
-<text class="note" x="40" y="590">Dashed line: Offline-Optimized static reference. Solid lines: Rule-Based online trajectory.</text>
+<text class="note" x="40" y="590">Preliminary PoC: dashed line is the current grid-selected static reference; solid lines are the online trajectory.</text>
 </svg>

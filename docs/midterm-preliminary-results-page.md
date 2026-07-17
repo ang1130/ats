@@ -12,7 +12,7 @@
 | 页码 | 主题 | 主要材料 | 核心结论 |
 |---|---|---|---|
 | 实验结果页 1 | 实验设计与对比方法 | 动态场景、deadline profile、四组方法、指标 | 说明数据怎么来、比较什么 |
-| 实验结果页 2 | 四组指标对比 | `metrics_bar_relaxed.svg` + relaxed 表格 | Static-Low 失效，Rule-Based 有改善，Offline-Optimized 最好 |
+| 实验结果页 2 | 四组指标对比 | `metrics_bar_relaxed.svg` + relaxed 表格 | Static-Low 在动态场景下明显失效，Rule-Based 相比 Static-Low 有改善趋势，而当前 CIR/CBS 离散搜索空间下的 Offline-Optimized 候选显示规则库仍有差距。 |
 | 实验结果页 3 | 动态过程分析 | `delay_timeseries_relaxed.svg` + `cir_cbs_trajectory_relaxed.svg` | Rule-Based 能动态调参，但 CIR 提升仍不足 |
 | 实验结果页 4 | 规则触发与预标定 | `rule_timeline_relaxed.svg` + 预标定表 | 规则库已开始标定，偏向 CIR 的策略更有效 |
 
@@ -60,7 +60,7 @@ ET burst 突发注入
 |---|---|
 | Static-Low | 低谷静态配置 |
 | Static-High | 手工高配置 |
-| Offline-Optimized | CIR/CBS 网格搜索静态基线 |
+| Offline-Optimized | 当前 CIR/CBS 离散网格搜索空间下的静态较优候选 |
 | Rule-Based | 在线规则库方法 |
 
 ### 右下：评价指标
@@ -126,7 +126,7 @@ ats-sim/results/figures/metrics_bar_relaxed.svg
 如果要提 strict，只建议放一句：
 
 ```text
-strict profile 下 Offline-Optimized 违约率为 0.04%，Rule-Based 为 52.61%，说明当前规则库仍需进一步标定和高保真验证。
+strict profile 下，当前 grid candidate 的 violation rate 为 0.04%（8/22035），这仅表示其满足 PoC 的 `epsilon=1%` 可行门限；Rule-Based 为 52.61%，说明当前规则库仍需进一步标定和高保真验证。
 ```
 
 不要在主图中过多展开 strict，否则会让页面显得负面且难解释。

@@ -394,7 +394,7 @@ OMNeT++ 仿真结果表明：
 
 然后说明：
 
-> 本阶段为降低实现复杂度，先固定 MRT，仅对 CIR 与 CBS 进行自适应；中期后扩展 MRT。
+> 本阶段为降低实现复杂度，只对 CIR 与 CBS 进行自适应；MRT 仅保留为理论/配置占位量，当前 Python 执行模型未实施 residence-time/MRT drop 语义，中期后在标准仿真中扩展。
 
 ## 9.2 基线必须包含 Yoshimura & Ito 的离线优化
 
@@ -430,7 +430,7 @@ OMNeT++ 仿真结果表明：
 
 > x = (CIR, CBS, MRT)
 
-并说明短期实现只调整 CIR/CBS，MRT 固定。
+并说明短期实现只调整 CIR/CBS，MRT 仅为理论/配置占位，未在 Python 执行模型中实施。
 
 ## 必做 2：更新相关工作表
 
@@ -452,7 +452,7 @@ OMNeT++ 仿真结果表明：
 ## 必做 5：实现规则库 M7
 
 规则库输入：q、P95 delay、lambda、sigma、drop。  
-规则库动作：调整 CIR/CBS，MRT 暂固定。
+规则库动作：调整 CIR/CBS，MRT 暂不执行。
 
 ## 必做 6：实验必须标注 preliminary
 
@@ -465,7 +465,7 @@ OMNeT++ 仿真结果表明：
 # 11. 当前最推荐的工作顺序
 
 1. 修改 `ats-formalization.md`：引入 CIR/CBS/MRT；
-2. 修改 `ats-rulelib-and-schedule.md`：规则动作改成 CIR/CBS，MRT 固定；
+2. 修改 `ats-rulelib-and-schedule.md`：规则动作改成 CIR/CBS，明确 MRT 仅为理论/配置占位且未在 PoC 执行；
 3. 新建 `traffic_literature.yaml`：用文献参数构造实验；
 4. 写 M7 规则库；
 5. 跑 Static-Low / Static-High / Rule-Based；

@@ -9,6 +9,7 @@ text{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
 .note{font-size:11px;fill:#898781}
 </style>
 <rect width="100%" height="100%" fill="#fcfcfb" rx="14"/>
+<metadata>preliminary-ats-poc; profile=relaxed; seed=42; source_run_id=2673fe764579b28c</metadata>
 <text class="title" x="40" y="38">Rule trigger timeline — relaxed</text>
 <text class="subtitle" x="40" y="60">Rule-Based adjustments; each marker is one online CIR/CBS action</text>
 <text class="axis" x="124" y="109" text-anchor="end">R2_DELAY_WARN</text>

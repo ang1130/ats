@@ -21,9 +21,12 @@ import argparse
 import json
 import math
 import os
+import sys
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 from run_rule_compare import load_cfg, run_once, strip_large
+from src.provenance import build_provenance
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,6 +57,22 @@ METRIC_KEYS = [
     "initial_cir",
     "initial_cbs",
 ]
+
+
+def build_grid_provenance(deadline_profile: str, seed: int, argv) -> dict:
+    root = Path(ROOT)
+    return build_provenance(
+        root=root,
+        entry_script=Path(__file__).resolve(),
+        seed=seed,
+        deadline_profile=deadline_profile,
+        config_paths=[Path(TRAFFIC_CONFIG), Path(SCENARIO_CONFIG)],
+        source_paths=list((root / "src").glob("*.py")) + [
+            root / "experiments" / "run_rule_compare.py",
+            Path(__file__).resolve(),
+        ],
+        argv=argv,
+    )
 
 
 def candidate_id(cir: float, cbs: float) -> str:
@@ -106,7 +125,7 @@ def make_candidate(result: dict, cir: float, cbs: float, traffic_cfg: dict,
     }
 
 
-def run_grid(deadline_profile: str, top_k: int = 5) -> dict:
+def run_grid(deadline_profile: str, top_k: int = 5, seed: int = 42, argv=()) -> dict:
     traffic_cfg = load_cfg(TRAFFIC_CONFIG)
     scenario_cfg = load_cfg(SCENARIO_CONFIG)
 
@@ -125,7 +144,7 @@ def run_grid(deadline_profile: str, top_k: int = 5) -> dict:
             done += 1
             label = f"Offline-Candidate {cir / 1e6:.1f}Mbps/{cbs / 1e3:.1f}Kbit"
             print(f"[{deadline_profile}] {done:02d}/{total}: {label}")
-            result = run_once(label, False, traffic_cfg, scenario_cfg, cir, cbs, deadline_profile)
+            result = run_once(label, False, traffic_cfg, scenario_cfg, cir, cbs, deadline_profile, seed=seed)
             candidates.append(make_candidate(result, cir, cbs, traffic_cfg, cbs_candidates,
                                              epsilon, max_drop_rate))
 
@@ -135,10 +154,12 @@ def run_grid(deadline_profile: str, top_k: int = 5) -> dict:
         best["label"] = "Offline-Optimized"
 
     return {
+        "schema_version": "preliminary-ats-poc-v1",
+        "provenance": build_grid_provenance(deadline_profile, seed, argv),
         "note": (
             "Preliminary single-hop Python simulation. Offline-Optimized is a CIR/CBS "
-            "grid-search approximation of a static optimized ATS baseline; MRT is fixed "
-            "and not searched in the current PoC."
+            "grid-search approximation of a static optimized ATS baseline; MRT is a "
+            "configuration placeholder and is not enforced or searched in the current PoC."
         ),
         "deadline_profile": deadline_profile,
         "traffic_config": "config/traffic_literature.yaml",
@@ -190,7 +211,7 @@ def print_summary(result: dict, out_path: str):
     print("配置：traffic_literature.yaml + scenario_literature.yaml")
     print(f"deadline profile: {result['deadline_profile']}")
     print(f"candidates: {len(result['candidates'])}")
-    print("注意：preliminary single-hop Python PoC；MRT 固定，未参与搜索")
+    print("注意：preliminary single-hop Python PoC；MRT 为配置占位，未在执行模型中实施或参与搜索")
     print("=" * 72)
 
     if not best:
@@ -240,6 +261,12 @@ def parse_args():
         default=5,
         help="Number of top candidates to include in the summary list.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for BE arrivals and ET burst offsets (default: 42).",
+    )
     return parser.parse_args()
 
 
@@ -247,7 +274,7 @@ def main():
     args = parse_args()
     profiles = ["relaxed", "strict"] if args.all_profiles else [args.deadline_profile]
     for profile in profiles:
-        result = run_grid(profile, top_k=args.top_k)
+        result = run_grid(profile, top_k=args.top_k, seed=args.seed, argv=sys.argv[1:])
         out_path = save_result(result)
         print_summary(result, out_path)
 

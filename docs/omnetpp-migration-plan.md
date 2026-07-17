@@ -36,7 +36,7 @@
 | 主要目的 | 快速验证问题必要性、规则逻辑和参数范围 | 标准化、高保真仿真验证 |
 | 网络规模 | 单跳简化链路 | 单交换机起步，后续多跳/多交换机 |
 | ATS 模型 | 简化 CIR/CBS 令牌桶近似 | 使用 INET TSN/ATS 模块或自定义 ATS 模块 |
-| MRT | 固定，未完整实现 | 逐步实现/对齐 residence time 和丢弃逻辑 |
+| MRT | 理论/配置占位，当前 Python 执行模型未实现 residence-time 或 MRT drop | 在 INET 中逐步实现/对齐 residence time 和丢弃逻辑 |
 | 流量 | 文献参数映射 + 人工动态事件 | 复现文献流量，扩展多场景 |
 | 规则库 | Python `RuleEngine` 原型 | controller / simple module / listener 形式迁移 |
 | 数据用途 | preliminary 趋势验证 | 论文正式实验依据 |
@@ -258,7 +258,7 @@ OMNeT++ 阶段需要重点验证：
 | OMNeT++ 配置复杂、调试慢 | 进度风险 | 先复现最小单交换机拓扑，再扩展 |
 | Python PoC 参数不能直接迁移 | 结果不一致 | 将 Python 结果定位为预筛选，OMNeT++ 中重新标定 |
 | strict deadline 过严 | 违约率高 | 同时保留 strict 与 relaxed 两种 profile，明确解释用途 |
-| MRT 建模困难 | 理论变量与实现不一致 | Stage 1 固定 MRT，Stage 2 再扩展 MRT |
+| MRT 建模困难 | 理论变量与执行模型尚未对齐 | INET Stage 1 明确 MRT 固定配置并核验行为，Stage 2 再扩展在线控制 |
 
 ---
 

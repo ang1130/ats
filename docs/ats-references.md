@@ -32,8 +32,13 @@
 - Maile et al., "On the Effect of TSN Forwarding Mechanisms on Best-Effort Traffic", arXiv:2408.01330 (2024) —— ATS 对 BE 流影响参考。
 - Craciunas et al., EMSOFT 2016 —— TT 流量参数经典出处。
 
-## 待补（需 IEEE 付费墙，学校订阅下载）
-- Yoshimura & Ito 2025（下坡单纯形离线优化 ATS）—— **直接基线 B1 的复现依据**。
+## 已用于当前文献参数映射的直接基线
+
+- **Yoshimura, A.; Ito, Y.** *A Study on Optimal Ethernet-based Industrial Networks Construction Using Asynchronous Traffic Shaping in IEEE 802.1TSN and Downhill Simplex Method.* ICOIN 2025. DOI: `10.1109/ICOIN63865.2025.10992702`。
+  - 当前项目已从该文献整理了流量参数和 Offline 静态优化的研究参照；Python PoC 采用的是 CIR/CBS 离散网格近似，而非原文的完整 Downhill Simplex 复现。
+
+## 待补/待进一步核验
+
 - Wu et al. 2025（队列理论令牌桶自适应）—— 规则库启发源。
 - Lübeck et al. 2025（ATS 非 FIFO 无界延迟）—— 机制改进参考。
 - 李琳 et al. 2025 HTS（混合整形）—— 相关工作。
