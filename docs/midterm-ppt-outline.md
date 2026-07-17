@@ -176,7 +176,9 @@ x = (r, b)
 x = (CIR, CBS, MRT)
 
 当前 PoC 阶段：
-x_stage1 = (CIR, CBS), MRT fixed
+x_stage1 = (CIR, CBS)
+
+MRT 仅作为理论/配置占位量保留；当前 Python 执行模型不实施 residence-time/MRT drop 约束。
 ```
 
 参数说明表：
@@ -185,7 +187,7 @@ x_stage1 = (CIR, CBS), MRT fixed
 |---|---|---|
 | CIR | Committed Information Rate | 在线调整 |
 | CBS | Committed Burst Size | 在线调整 |
-| MRT | Max Residence Time | 暂固定，后续扩展 |
+| MRT | Max Residence Time | 理论/配置占位；当前 PoC 未执行 residence-time/MRT drop 语义 |
 
 ## 讲稿要点
 
@@ -308,7 +310,7 @@ R1-R6 规则库初版设计
 | 目的 | 快速验证规则逻辑和参数范围 | 高保真标准仿真 |
 | 网络模型 | 单跳简化 | 多跳/多交换机可扩展 |
 | ATS 实现 | CIR/CBS 简化近似 | TSN/ATS 模块或自定义模块 |
-| MRT | 固定 | 后续实现或对齐 |
+| MRT | 理论/配置占位，当前 PoC 未执行 residence-time/MRT drop 语义 | 后续实现并对齐 |
 | 数据用途 | preliminary 趋势验证 | 论文正式实验 |
 
 底部醒目标注：
@@ -481,7 +483,7 @@ ats-sim/results/figures/rule_timeline_relaxed.svg
 
 1. 当前仿真为 Python/SimPy 单跳 PoC；
 2. 尚未完整实现 IEEE 802.1Qcr ATS；
-3. MRT 暂固定，未完整建模 residence time；
+3. MRT 仅为配置占位，未在 Python 执行模型中建模 residence time 或 MRT drop；
 4. 流量为文献映射 + 人工动态场景，不是真实工业 trace；
 5. 规则参数仅完成小型预标定，尚未系统优化；
 6. 缺少 OMNeT++/INET 高保真验证、多 seed、多场景实验。

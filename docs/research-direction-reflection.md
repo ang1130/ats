@@ -49,8 +49,10 @@ x = (CIR, CBS, MRT)
 考虑到 MRT 涉及 residence time、丢弃行为和更完整的 ATS 标准机制，当前阶段范围收敛为：
 
 ```text
-x_stage1 = (CIR, CBS), MRT fixed
+x_stage1 = (CIR, CBS)
 ```
+
+MRT 作为理论/配置占位量保留；当前 Python 执行模型未施加 residence-time/MRT drop 约束。
 
 即：
 

@@ -13,7 +13,7 @@
 | 分析 TSN 中 TAS 与 ATS 的适用场景 | **已完成初步梳理** | `ats-sim/docs/literature-notes.md`；中期材料背景部分 | TAS 适合强确定性周期流，ATS 更适合异步、突发和非周期流量 |
 | 阅读 TSN/ATS 相关文献 | **已完成第一轮阅读整理，仍需继续补充** | `ats-sim/docs/literature-notes.md`；`docs/ats-references.md` 如有 | 已阅读并整理第一轮核心文献，后续继续精读 802.1Qcr、INET/OMNeT++ 相关资料 |
 | 建立 ATS 参数形式化模型 | **已完成关键修正** | `docs/ats-formalization.md` | 开题初期用 `(r,b)` 表述，文献阅读后修正为更标准的 `(CIR,CBS,MRT)` |
-| 研究 CIR/CBS/MRT 对时延和资源的影响 | **已完成 CIR/CBS 初步验证，MRT 暂固定** | `ats-sim/config/traffic_literature.yaml`；`ats-sim/experiments/run_offline_grid_search.py`；`ats-sim/experiments/run_rule_calibration.py` | 当前阶段聚焦 CIR/CBS，MRT 涉及标准 residence time 行为，放入中期后扩展 |
+| 研究 CIR/CBS/MRT 对时延和资源的影响 | **已完成 CIR/CBS 初步验证；MRT 保留为理论/配置占位量，未在 Python 执行路径中约束** | `ats-sim/config/traffic_literature.yaml`；`ats-sim/experiments/run_offline_grid_search.py`；`ats-sim/experiments/run_rule_calibration.py` | 当前阶段聚焦 CIR/CBS；MRT 涉及标准 residence time 行为，后续在 OMNeT++/INET 中实现与验证 |
 | 构建动态流量场景 | **已完成 preliminary 动态场景** | `ats-sim/config/scenario_literature.yaml` | 已构造低负载—高峰—突发—回落动态场景，用于验证静态参数失效和规则调整趋势 |
 | 接入文献参数 | **已完成初步接入** | `ats-sim/config/traffic_literature.yaml` | 当前流量周期、大小、deadline 等参数来自文献映射，但仍属于 preliminary 配置 |
 | 设计轻量级自适应规则库 | **已完成初版并迭代** | `ats-sim/src/rule_engine.py` | 已实现 R1-R6 规则、cooldown、防抖、R4 迟滞，规则库可在线调整 CIR/CBS |
@@ -61,11 +61,11 @@
 
 > 由于规则库设计需要频繁调整状态变量、阈值和动作策略，本阶段先采用 Python/SimPy 搭建轻量级 PoC，用于快速验证问题和参数范围。该平台不替代 OMNeT++，中期后将迁移到 OMNeT++/INET 做高保真验证。
 
-### 4.2 为什么 MRT 暂时固定？
+### 4.2 为什么当前不执行 MRT 机制？
 
 建议说：
 
-> MRT 涉及 ATS 标准中的 residence time 和丢弃行为，当前单跳 PoC 尚不足以严谨评估 MRT 动态调整。因此本阶段先聚焦 CIR/CBS，后续在标准仿真平台中扩展 MRT。
+> MRT 涉及 ATS 标准中的 residence time 和丢弃行为；当前 Python 单跳 PoC 没有实现该执行语义。为避免把配置占位值误写成标准机制，本阶段只对 CIR/CBS 做近似整形与在线调整，后续在 OMNeT++/INET 中实现并验证 MRT。
 
 ### 4.3 当前 Rule-Based 是否已经达到预期？
 

@@ -103,6 +103,18 @@ def safe_max(values: List[float], fallback: float = 1.0) -> float:
     return max(vals) if vals else fallback
 
 
+def add_artifact_metadata(svg: SVG, data: dict, profile: str):
+    provenance = data.get("provenance", {})
+    run_id = provenance.get("run_id", "legacy-no-provenance")
+    seed = provenance.get("seed", "legacy-unknown")
+    svg.add(
+        "<metadata>"
+        f"preliminary-ats-poc; profile={escape(str(profile))}; seed={escape(str(seed))}; "
+        f"source_run_id={escape(str(run_id))}"
+        "</metadata>"
+    )
+
+
 def legend(svg: SVG, labels: List[str], x: float, y: float):
     cur_x = x
     for label in labels:
@@ -130,6 +142,7 @@ def plot_metrics_bar(data: dict, profile: str) -> str:
 
     width, height = 1180, 680
     svg = SVG(width, height, f"ATS preliminary metrics bar chart {profile}")
+    add_artifact_metadata(svg, data, profile)
     svg.add(f'<text class="title" x="40" y="38">ATS preliminary comparison — {profile}</text>')
     svg.add('<text class="subtitle" x="40" y="60">Static-Low / Static-High / Offline-Optimized / Rule-Based · single-hop Python PoC</text>')
     legend(svg, labels, 40, 92)
@@ -198,6 +211,7 @@ def plot_delay_timeseries(data: dict, profile: str) -> str:
     def sy(v_ms): return margin["t"] + plot_h - plot_h * v_ms / axis_max
 
     svg = SVG(width, height, f"ATS delay time series {profile}")
+    add_artifact_metadata(svg, data, profile)
     svg.add(f'<text class="title" x="40" y="38">Observed TT/ET delay over time — {profile}</text>')
     svg.add('<text class="subtitle" x="40" y="60">Monitor d_obs = windowed P95 delay · single-hop Python PoC</text>')
     legend(svg, labels, 40, 92)
@@ -250,6 +264,7 @@ def plot_rule_timeline(data: dict, profile: str) -> str:
     def sx(t): return margin["l"] + plot_w * t / max_t
 
     svg = SVG(width, height, f"ATS rule trigger timeline {profile}")
+    add_artifact_metadata(svg, data, profile)
     svg.add(f'<text class="title" x="40" y="38">Rule trigger timeline — {profile}</text>')
     svg.add('<text class="subtitle" x="40" y="60">Rule-Based adjustments; each marker is one online CIR/CBS action</text>')
 
@@ -305,6 +320,7 @@ def plot_cir_cbs_trajectory(data: dict, profile: str) -> str:
     def sx(t): return margin["l"] + plot_w * t / max_t
 
     svg = SVG(width, height, f"ATS CIR CBS trajectory {profile}")
+    add_artifact_metadata(svg, data, profile)
     svg.add(f'<text class="title" x="40" y="38">Rule-Based CIR/CBS trajectory — {profile}</text>')
     svg.add('<text class="subtitle" x="40" y="60">Online rule updates compared with Offline-Optimized static reference</text>')
 
@@ -334,7 +350,7 @@ def plot_cir_cbs_trajectory(data: dict, profile: str) -> str:
         t = duration * tick / 4
         x = sx(t)
         svg.add(f'<text class="axis" x="{x:.1f}" y="{height - 34}" text-anchor="middle">{t:.1f}s</text>')
-    svg.add('<text class="note" x="40" y="590">Dashed line: Offline-Optimized static reference. Solid lines: Rule-Based online trajectory.</text>')
+    svg.add('<text class="note" x="40" y="590">Preliminary PoC: dashed line is the current grid-selected static reference; solid lines are the online trajectory.</text>')
     return write_svg(f"cir_cbs_trajectory_{profile}.svg", svg)
 
 

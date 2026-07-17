@@ -15,6 +15,7 @@
 - Rule-Based 只调整 CIR/CBS，MRT 固定。
 """
 import sys, os, re, json, random, argparse
+from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
@@ -26,6 +27,7 @@ from src.traffic import TTGenerator, BEGenerator, ETInjector
 from src.monitor import Monitor
 from src.rule_engine import RuleEngine, RuleParams
 from src.metrics import summarize
+from src.provenance import build_provenance
 
 
 def _to_float(x):
@@ -94,9 +96,10 @@ def default_rule_params(ats: dict, deadline_default: float) -> RuleParams:
 
 
 def run_once(label: str, adaptive: bool, traffic_cfg: dict, scenario_cfg: dict,
-             cir: float, cbs: float, deadline_profile: str, rule_params: RuleParams = None):
+             cir: float, cbs: float, deadline_profile: str, rule_params: RuleParams = None,
+             seed: int = 42):
     env = simpy.Environment()
-    rng = random.Random(42)
+    rng = random.Random(seed)
     stats = Stats()
     recv_bits = [0.0]
 
@@ -187,6 +190,20 @@ def run_once(label: str, adaptive: bool, traffic_cfg: dict, scenario_cfg: dict,
     return result
 
 
+def build_run_provenance(deadline_profile: str, seed: int, argv) -> dict:
+    root = Path(__file__).resolve().parents[1]
+    src_dir = root / "src"
+    return build_provenance(
+        root=root,
+        entry_script=Path(__file__).resolve(),
+        seed=seed,
+        deadline_profile=deadline_profile,
+        config_paths=[root / "config" / "traffic_literature.yaml", root / "config" / "scenario_literature.yaml"],
+        source_paths=list(src_dir.glob("*.py")) + [Path(__file__).resolve()],
+        argv=argv,
+    )
+
+
 def strip_large(result):
     """控制终端打印体积。"""
     r = dict(result)
@@ -203,6 +220,12 @@ def main():
         default="relaxed",
         help="strict 使用文献 350us/600us deadline；relaxed 统一使用 traffic_literature.yaml 中的 10ms D_max",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for BE arrivals and ET burst offsets (default: 42).",
+    )
     args = parser.parse_args()
 
     traffic_cfg = load_cfg("config/traffic_literature.yaml")
@@ -214,15 +237,17 @@ def main():
 
     results = []
     results.append(run_once("Static-Low", False, traffic_cfg, scenario_cfg,
-                            static_low["cir"], static_low["cbs"], args.deadline_profile))
+                            static_low["cir"], static_low["cbs"], args.deadline_profile, seed=args.seed))
     results.append(run_once("Static-High", False, traffic_cfg, scenario_cfg,
-                            static_high["cir"], static_high["cbs"], args.deadline_profile))
+                            static_high["cir"], static_high["cbs"], args.deadline_profile, seed=args.seed))
     results.append(run_once("Rule-Based", True, traffic_cfg, scenario_cfg,
-                            static_low["cir"], static_low["cbs"], args.deadline_profile))
+                            static_low["cir"], static_low["cbs"], args.deadline_profile, seed=args.seed))
 
     os.makedirs("results", exist_ok=True)
     out = {
-        "note": "Preliminary single-hop Python simulation. Rule thresholds are engineering defaults, not calibrated.",
+        "schema_version": "preliminary-ats-poc-v1",
+        "provenance": build_run_provenance(args.deadline_profile, args.seed, sys.argv[1:]),
+        "note": "Preliminary single-hop Python simulation. Rule thresholds are engineering defaults, not calibrated. MRT is not enforced by the current execution model.",
         "deadline_profile": args.deadline_profile,
         "results": results,
     }
@@ -233,7 +258,7 @@ def main():
     print("=" * 72)
     print("Preliminary Static-Low / Static-High / Rule-Based comparison")
     print("配置：traffic_literature.yaml + scenario_literature.yaml")
-    print(f"deadline profile: {args.deadline_profile}")
+    print(f"deadline profile: {args.deadline_profile}; seed: {args.seed}")
     print("注意：规则阈值尚未离线标定，结果仅为 PoC")
     print("=" * 72)
     for r in results:

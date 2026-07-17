@@ -87,7 +87,7 @@
 
 可写：
 
-> 经过第一轮文献阅读，本课题在三个方面进行了修正：第一，将 ATS 参数建模从 `(r,b)` 修正为 `(CIR,CBS,MRT)`；第二，将短期 PoC 的实现重点聚焦在 CIR/CBS 在线调整，MRT 暂固定；第三，引入 Offline-Optimized 静态基线，避免只将规则法与低静态配置进行对比。
+> 经过第一轮文献阅读，本课题在三个方面进行了修正：第一，将 ATS 参数建模从 `(r,b)` 修正为 `(CIR,CBS,MRT)`；第二，将短期 PoC 的执行重点聚焦在 CIR/CBS 在线调整，MRT 仅保留为理论/配置占位量而未在执行模型中实施 residence-time 约束；第三，引入 Offline-Optimized 静态基线，避免只将规则法与低静态配置进行对比。
 
 ## 可配表
 
@@ -125,13 +125,13 @@ x = (CIR, CBS, MRT)
 
 可写：
 
-> 考虑到 MRT 涉及标准 ATS 中 residence time 和丢弃行为，当前 Python/SimPy PoC 暂时只实现 CIR/CBS 的在线调整，即：
+> 考虑到 MRT 涉及标准 ATS 中 residence time 和丢弃行为，当前 Python/SimPy PoC 只执行 CIR/CBS 的在线调整：
 
 ```text
-x_stage1 = (CIR, CBS), MRT fixed
+x_stage1 = (CIR, CBS)
 ```
 
-> 后续将在 OMNeT++/INET 等更标准仿真平台中进一步扩展 MRT。
+> MRT 仍保留在理论模型和配置中，但当前执行模型未实施 residence-time/MRT drop 约束；后续将在 OMNeT++/INET 等更标准仿真平台中进一步实现和验证。
 
 ### 3.3 仿真路线修正
 
@@ -163,11 +163,13 @@ x_stage1 = (CIR, CBS), MRT fixed
 x(t) = (CIR(t), CBS(t), MRT(t))
 ```
 
-> 当前阶段实现中，MRT 固定，在线调整变量为：
+> 当前阶段执行中，在线调整变量为：
 
 ```text
 x_stage1(t) = (CIR(t), CBS(t))
 ```
+
+> MRT 仅保留为理论/配置占位量，当前执行模型不施加 residence-time/MRT drop 约束。
 
 ### 4.2 状态变量
 
@@ -354,7 +356,7 @@ BE 流   → EgressLink → 接收统计
 > 当前工作仍存在以下局限：
 
 1. 当前仿真为 Python/SimPy 单跳 PoC，不是完整 IEEE 802.1Qcr ATS；
-2. MRT 暂固定，尚未完整实现 maximum residence time 相关行为；
+2. MRT 仅为理论/配置占位量，尚未在 Python 执行模型中实现 maximum residence time 约束或相关丢弃行为；
 3. 流量参数来自文献映射，动态场景为人工设计，不是真实工业 trace；
 4. 规则库仅完成初版和小型预标定，尚未系统优化；
 5. 当前实验主要为单场景、固定随机种子，缺少多 seed、多场景；

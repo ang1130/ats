@@ -19,8 +19,11 @@
 import argparse
 import json
 import os
+import sys
+from pathlib import Path
 
 from run_rule_compare import load_cfg, run_once
+from src.provenance import build_provenance, same_experiment_inputs
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +32,23 @@ TRAFFIC_CONFIG = os.path.join(ROOT, "config", "traffic_literature.yaml")
 SCENARIO_CONFIG = os.path.join(ROOT, "config", "scenario_literature.yaml")
 
 
-def load_offline_best(deadline_profile: str) -> dict:
+def build_compare_provenance(deadline_profile: str, seed: int, argv) -> dict:
+    root = Path(ROOT)
+    return build_provenance(
+        root=root,
+        entry_script=Path(__file__).resolve(),
+        seed=seed,
+        deadline_profile=deadline_profile,
+        config_paths=[Path(TRAFFIC_CONFIG), Path(SCENARIO_CONFIG)],
+        source_paths=list((root / "src").glob("*.py")) + [
+            root / "experiments" / "run_rule_compare.py",
+            Path(__file__).resolve(),
+        ],
+        argv=argv,
+    )
+
+
+def load_offline_best(deadline_profile: str, expected_provenance: dict | None = None) -> dict:
     path = os.path.join(RESULTS_DIR, f"offline_grid_literature_{deadline_profile}.json")
     if not os.path.exists(path):
         raise FileNotFoundError(
@@ -38,6 +57,17 @@ def load_offline_best(deadline_profile: str) -> dict:
         )
     with open(path) as f:
         data = json.load(f)
+    if expected_provenance is not None:
+        offline_provenance = data.get("provenance")
+        if offline_provenance is None:
+            raise ValueError(
+                f"{path} has no provenance metadata. Rerun the offline grid search with the same seed first."
+            )
+        if not same_experiment_inputs(offline_provenance, expected_provenance):
+            raise ValueError(
+                f"{path} does not match the requested profile, seed, or input configuration. "
+                "Rerun the offline grid search before comparison."
+            )
     best = data.get("best")
     if not best:
         raise ValueError(f"No best candidate found in {path}")
@@ -51,29 +81,33 @@ def strip_for_print(result: dict) -> dict:
     return r
 
 
-def run_compare(deadline_profile: str) -> dict:
+def run_compare(deadline_profile: str, seed: int = 42, argv=()) -> dict:
     traffic_cfg = load_cfg(TRAFFIC_CONFIG)
     scenario_cfg = load_cfg(SCENARIO_CONFIG)
+    provenance = build_compare_provenance(deadline_profile, seed, argv)
     baselines = traffic_cfg["baselines"]
     static_low = baselines["static_low"]
     static_high = baselines["static_high"]
-    offline_best = load_offline_best(deadline_profile)
+    offline_best = load_offline_best(deadline_profile, expected_provenance=provenance)
 
     results = []
     results.append(run_once("Static-Low", False, traffic_cfg, scenario_cfg,
-                            static_low["cir"], static_low["cbs"], deadline_profile))
+                            static_low["cir"], static_low["cbs"], deadline_profile, seed=seed))
     results.append(run_once("Static-High", False, traffic_cfg, scenario_cfg,
-                            static_high["cir"], static_high["cbs"], deadline_profile))
+                            static_high["cir"], static_high["cbs"], deadline_profile, seed=seed))
     results.append(run_once("Offline-Optimized", False, traffic_cfg, scenario_cfg,
-                            offline_best["cir"], offline_best["cbs"], deadline_profile))
+                            offline_best["cir"], offline_best["cbs"], deadline_profile, seed=seed))
     results.append(run_once("Rule-Based", True, traffic_cfg, scenario_cfg,
-                            static_low["cir"], static_low["cbs"], deadline_profile))
+                            static_low["cir"], static_low["cbs"], deadline_profile, seed=seed))
 
     return {
+        "schema_version": "preliminary-ats-poc-v1",
+        "provenance": provenance,
         "note": (
             "Preliminary single-hop Python simulation. Offline-Optimized is selected "
             "by CIR/CBS grid search; Rule-Based thresholds are engineering defaults, "
-            "not fully calibrated. MRT is fixed in the current PoC."
+            "not fully calibrated. MRT is a configuration placeholder and is not enforced "
+            "by the current execution model."
         ),
         "deadline_profile": deadline_profile,
         "offline_source": f"results/offline_grid_literature_{deadline_profile}.json",
@@ -130,6 +164,12 @@ def parse_args():
         help="strict 使用文献 350us/600us deadline；relaxed 统一使用 10ms D_max",
     )
     parser.add_argument("--all-profiles", action="store_true", help="Run both relaxed and strict profiles.")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for BE arrivals and ET burst offsets (default: 42).",
+    )
     return parser.parse_args()
 
 
@@ -137,7 +177,7 @@ def main():
     args = parse_args()
     profiles = ["relaxed", "strict"] if args.all_profiles else [args.deadline_profile]
     for profile in profiles:
-        result = run_compare(profile)
+        result = run_compare(profile, seed=args.seed, argv=sys.argv[1:])
         path = save_result(result)
         print_summary(result, path)
 

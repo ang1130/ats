@@ -9,7 +9,7 @@
 #
 # 注意：
 # 1. 本文件用于“文献依据配置”，不一定直接替换当前调试配置 traffic.yaml。
-# 2. 现有 Python 原型代码当前只支持 CIR/CBS 的令牌桶核心，MRT 先作为固定参数记录。
+# 2. 现有 Python 原型代码当前只支持 CIR/CBS 的令牌桶核心；MRT 仅作为配置占位记录，当前执行模型不实施 residence-time/MRT drop 语义。
 # 3. 正式实验前需要编写适配脚本，将这里的多类流量映射到现有 TT/ET/BE 生成器。
 
 metadata:
@@ -37,8 +37,8 @@ ats:
   cbs_max: 1.0e6
 
   # MRT = Max Residence Time
-  # 当前阶段固定，不在线调整。取值需后续根据实验调校。
-  mrt_fixed: 1.0e-3           # 1 ms, 初始固定值；后续可按 350us/600us 约束细化
+  # 当前执行模型不使用 MRT；该数值仅保留为后续标准仿真的初始配置候选。
+  mrt_fixed: 1.0e-3           # 1 ms；后续可按 350us/600us 约束细化
 
   # 兼容现有代码字段：Static-Low，按低谷负载保守配置
   r_default: 8.0e6            # CIR low baseline

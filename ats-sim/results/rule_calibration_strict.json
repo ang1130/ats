@@ -1,4 +1,43 @@
 {
+  "schema_version": "preliminary-ats-poc-v1",
+  "provenance": {
+    "schema_version": "preliminary-ats-poc-v1",
+    "entry_script": "experiments/run_rule_calibration.py",
+    "seed": 42,
+    "deadline_profile": "strict",
+    "config_sha256": {
+      "config/scenario_literature.yaml": "b2f4988d590875a2800b7ad00189b3c0dba8bb63ba18081827485b63ce6626f0",
+      "config/traffic_literature.yaml": "8a333c4e5a1dddecfc56790388adae68fe749157bac2255ebb94f8826c73c790"
+    },
+    "source_sha256": {
+      "experiments/run_rule_calibration.py": "6300adc107a2e97043da0b7955ddb88a26b4ac695bf047c6bd2120641a5275fc",
+      "experiments/run_rule_compare.py": "6061bbdb75d3a3c59ca106e36767ebe0c29f59e905d77ea8d84d5ae1da2ca39f",
+      "src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/ats_shaper.py": "1add7d660598b1317e21703f1a98eb4869d7d108aa137430e40f6857ac95b062",
+      "src/egress.py": "3402702c299032cfabc5389dd6cee9180f3689bbe0a29913341f5b1706b8b34f",
+      "src/metrics.py": "e9771a3e2e94622e5ba746b639f54d87616d91a2d944361ed29f865d542156f5",
+      "src/monitor.py": "ee4128fb9963ba29fd5c344ae6629d0da9b03093601dcf91f729946452aa346d",
+      "src/packet.py": "2582b6e4ae4514a5db6f191a628c2d959b2c5ac659a83295afecd42d24ee917f",
+      "src/provenance.py": "76d81bdc79ca4831d8fa170630659fcaae449ded3244dc1c10dee5ccc0ac22b8",
+      "src/rule_engine.py": "d1e83d29582d25b0ddc459c7eb041bdc28b65da9ec9c66f80c8289eaf1e7aa62",
+      "src/traffic.py": "aab0938af1a3854f34c006aa9a799b8229458aef4595d50213a78bb6aadd8f61"
+    },
+    "argv": [
+      "--all-profiles",
+      "--seed",
+      "42"
+    ],
+    "git": {
+      "revision": "c47b3d56ca3ecc16c3ee976778ee00afc6418815",
+      "dirty": true
+    },
+    "runtime": {
+      "python": "3.14.6",
+      "simpy": "4.1.2",
+      "pyyaml": "6.0.3"
+    },
+    "run_id": "6675dabac821cc38"
+  },
   "note": "Preliminary single-hop Python simulation. This is a small Rule-Based parameter calibration/ablation experiment before OMNeT++ migration; it is not final rule optimization.",
   "deadline_profile": "strict",
   "traffic_config": "config/traffic_literature.yaml",
